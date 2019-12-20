@@ -5,196 +5,132 @@
 -compile({inline_size, 512}).
 
 -export([
-    async_custom/3,
-    async_get/2,
-    async_post/2,
-    async_put/2,
-    async_request/3,
-    custom/3,
-    get/2,
-    post/2,
-    put/2,
-    receive_response/1,
-    request/3
+   syncCustom/3,
+   syncGet/2,
+   syncPost/2,
+   syncPut/2,
+   receiveResponse/1,
+   syncRequest/3,
+   asyncCustom/3,
+   asyncGet/2,
+   asyncPost/2,
+   asyncPut/2,
+   asyncRequest/3,
+
+
+   callAgency/2,
+   callAgency/3,
+   castAgency/2,
+   castAgency/3,
+   castAgency/4,
+   receiveResponse/1
+
 ]).
 
-%% public
--spec async_custom(binary(), buoy_url(), buoy_opts()) ->
-    {ok, shackle:request_id()} | error().
 
-async_custom(Verb, Url, BuoyOpts) ->
-    async_request({custom, Verb}, Url, BuoyOpts).
+-spec asyncCustom(binary(), dbUrl(), httpParam()) -> {ok, shackle:request_id()} | error().
+asyncCustom(Verb, Url, HttpParam) ->
+   asyncRequest({custom, Verb}, Url, HttpParam).
 
--spec async_get(buoy_url(), buoy_opts()) ->
-    {ok, shackle:request_id()} | error().
+-spec asyncGet(dbUrl(), httpParam()) -> {ok, shackle:request_id()} | error().
+asyncGet(Url, HttpParam) ->
+   asyncRequest(<<"GET">>, Url, HttpParam).
 
-async_get(Url, BuoyOpts) ->
-    async_request(get, Url, BuoyOpts).
+-spec asyncPost(dbUrl(), httpParam()) ->
+   {ok, shackle:request_id()} | error().
 
--spec async_post(buoy_url(), buoy_opts()) ->
-    {ok, shackle:request_id()} | error().
+asyncPost(Url, HttpParam) ->
+   asyncRequest(<<"POST">>, Url, HttpParam).
 
-async_post(Url, BuoyOpts) ->
-    async_request(post, Url, BuoyOpts).
+-spec asyncPut(dbUrl(), httpParam()) -> {ok, shackle:request_id()} | error().
+asyncPut(Url, HttpParam) ->
+   asyncRequest(<<"PUT">>, Url, HttpParam).
 
--spec async_put(buoy_url(), buoy_opts()) ->
-    {ok, shackle:request_id()} | error().
+-spec asyncRequest(method(), dbUrl(), httpParam()) -> {ok, shackle:request_id()} | error().
+asyncRequest(Method,
+   #dbUrl{host = Host, path = Path, poolName = PoolName},
+   #httpParam{headers = Headers, body = Body, pid = Pid, timeout = Timeout}) ->
+   Request = {request, Method, Path, Headers, Host, Body},
+   castAgency(PoolName, Request, Pid, Timeout).
 
-async_put(Url, BuoyOpts) ->
-    async_request(put, Url, BuoyOpts).
+-spec syncCustom(binary(), dbUrl(), httpParam()) -> {ok, buoy_resp()} | error().
+syncCustom(Verb, Url, BuoyOpts) ->
+   syncRequest({custom, Verb}, Url, BuoyOpts).
 
--spec async_request(method(), buoy_url(), buoy_opts()) ->
-    {ok, shackle:request_id()} | error().
+-spec syncGet(dbUrl(), httpParam()) -> {ok, buoy_resp()} | error().
+syncGet(Url, BuoyOpts) ->
+   syncRequest(get, Url, BuoyOpts).
 
-async_request(Method, #dbUrl{
-        protocol = Protocol,
-        host = Host,
-        hostname = Hostname,
-        port = Port,
-        path = Path
-    }, BuoyOpts) ->
+-spec syncPost(dbUrl(), httpParam()) -> {ok, buoy_resp()} | error().
+syncPost(Url, BuoyOpts) ->
+   syncRequest(post, Url, BuoyOpts).
 
-    case buoy_pool:lookup(Protocol, Hostname, Port) of
-        {ok, PoolName} ->
-            Headers = buoy_opts(headers, BuoyOpts),
-            Body = buoy_opts(body, BuoyOpts),
-            Request = {request, Method, Path, Headers, Host, Body},
-            Pid = buoy_opts(pid, BuoyOpts),
-            Timeout = buoy_opts(timeout, BuoyOpts),
-            shackle:cast(PoolName, Request, Pid, Timeout);
-        {error, _} = E ->
-            E
-    end.
+-spec syncPut(dbUrl(), httpParam()) -> {ok, buoy_resp()} | error().
+syncPut(Url, BuoyOpts) ->
+   syncRequest(put, Url, BuoyOpts).
 
--spec custom(binary(), buoy_url(), buoy_opts()) ->
-    {ok, buoy_resp()} | error().
+-spec receiveResponse(request_id()) -> {ok, term()} | error().
+receiveResponse(RequestId) ->
+   shackle:receive_response(RequestId).
 
-custom(Verb, Url, BuoyOpts) ->
-    request({custom, Verb}, Url, BuoyOpts).
+-spec syncRequest(method(), dbUrl(), httpParam()) -> {ok, buoy_resp()} | error().
+syncRequest(Method, #dbUrl{
+   protocol = Protocol,
+   host = Host,
+   hostname = Hostname,
+   port = Port,
+   path = Path
+}, BuoyOpts) ->
+   case buoy_pool:lookup(Protocol, Hostname, Port) of
+      {ok, PoolName} ->
+         Headers = buoy_opts(headers, BuoyOpts),
+         Body = buoy_opts(body, BuoyOpts),
+         Request = {request, Method, Path, Headers, Host, Body},
+         Timeout = buoy_opts(timeout, BuoyOpts),
+         shackle:call(PoolName, Request, Timeout);
+      {error, _} = E ->
+         E
+   end.
 
--spec get(buoy_url(), buoy_opts()) ->
-    {ok, buoy_resp()} | error().
+-spec callAgency(pool_name(), term()) -> term() | {error, term()}.
+callAgency(PoolName, Request) ->
+   callAgency(PoolName, Request, ?DEFAULT_TIMEOUT).
 
-get(Url, BuoyOpts) ->
-    request(get, Url, BuoyOpts).
+-spec callAgency(atom(), term(), timeout()) -> term() | {error, atom()}.
+callAgency(PoolName, Request, Timeout) ->
+   case castAgency(PoolName, Request, self(), Timeout) of
+      {ok, RequestId} ->
+         receiveResponse(RequestId);
+      {error, Reason} ->
+         {error, Reason}
+   end.
 
--spec post(buoy_url(), buoy_opts()) ->
-    {ok, buoy_resp()} | error().
+-spec castAgency(pool_name(), term()) -> {ok, request_id()} | {error, atom()}.
+castAgency(PoolName, Request) ->
+   castAgency(PoolName, Request, self()).
 
-post(Url, BuoyOpts) ->
-    request(post, Url, BuoyOpts).
+-spec castAgency(pool_name(), term(), pid()) -> {ok, request_id()} | {error, atom()}.
+castAgency(PoolName, Request, Pid) ->
+   castAgency(PoolName, Request, Pid, ?DEFAULT_TIMEOUT).
 
--spec put(buoy_url(), buoy_opts()) ->
-    {ok, buoy_resp()} | error().
+-spec castAgency(pool_name(), term(), pid(), timeout()) -> {ok, request_id()} | {error, atom()}.
+castAgency(PoolName, Request, Pid, Timeout) ->
+   Timestamp = os:timestamp(),
+   case agAgencyPoolMgr:getOneAgency(PoolName) of
+      {error, pool_not_found} = Error ->
+         Error;
+      undefined ->
+         {error, undefined_server};
+      AgencyName ->
+         RequestId = {AgencyName, make_ref()},
+         catch AgencyName ! {Request, #request{pid = Pid, requestId = RequestId, timeout = Timeout, timestamp = Timestamp}},
+         {ok, RequestId}
+   end.
 
-put(Url, BuoyOpts) ->
-    request(put, Url, BuoyOpts).
-
--spec receive_response(request_id()) ->
-    {ok, term()} | error().
-
-receive_response(RequestId) ->
-    shackle:receive_response(RequestId).
-
--spec request(method(), buoy_url(), buoy_opts()) ->
-    {ok, buoy_resp()} | error().
-
-request(Method, #dbUrl{
-        protocol = Protocol,
-        host = Host,
-        hostname = Hostname,
-        port = Port,
-        path = Path
-    }, BuoyOpts) ->
-
-    case buoy_pool:lookup(Protocol, Hostname, Port) of
-        {ok, PoolName} ->
-            Headers = buoy_opts(headers, BuoyOpts),
-            Body = buoy_opts(body, BuoyOpts),
-            Request = {request, Method, Path, Headers, Host, Body},
-            Timeout = buoy_opts(timeout, BuoyOpts),
-            shackle:call(PoolName, Request, Timeout);
-        {error, _} = E ->
-            E
-    end.
-
-%% private
-buoy_opts(body, BuoyOpts) ->
-    maps:get(body, BuoyOpts, ?DEFAULT_BODY);
-buoy_opts(headers, BuoyOpts) ->
-    maps:get(headers, BuoyOpts, ?DEFAULT_HEADERS);
-buoy_opts(pid, BuoyOpts) ->
-    maps:get(pid, BuoyOpts, ?DEFAULT_PID);
-buoy_opts(timeout, BuoyOpts) ->
-    maps:get(timeout, BuoyOpts, ?DEFAULT_TIMEOUT).
-
-
-%% public
--export([
-    call/2,
-    call/3,
-    cast/2,
-    cast/3,
-    cast/4,
-    receive_response/1
-]).
-
-%% public
--spec call(pool_name(), term()) ->
-    term() | {error, term()}.
-
-call(PoolName, Request) ->
-    call(PoolName, Request, ?DEFAULT_TIMEOUT).
-
--spec call(atom(), term(), timeout()) ->
-    term() | {error, atom()}.
-
-call(PoolName, Request, Timeout) ->
-    case cast(PoolName, Request, self(), Timeout) of
-        {ok, RequestId} ->
-            receive_response(RequestId);
-        {error, Reason} ->
-            {error, Reason}
-    end.
-
--spec cast(pool_name(), term()) ->
-    {ok, request_id()} | {error, atom()}.
-
-cast(PoolName, Request) ->
-    cast(PoolName, Request, self()).
-
--spec cast(pool_name(), term(), pid()) ->
-    {ok, request_id()} | {error, atom()}.
-
-cast(PoolName, Request, Pid) ->
-    cast(PoolName, Request, Pid, ?DEFAULT_TIMEOUT).
-
--spec cast(pool_name(), term(), pid(), timeout()) ->
-    {ok, request_id()} | {error, atom()}.
-
-cast(PoolName, Request, Pid, Timeout) ->
-    Timestamp = os:timestamp(),
-    case agAgencyPoolMgr:server(PoolName) of
-        {ok, Client, Server} ->
-            RequestId = {Server, make_ref()},
-            Server ! {Request, #cast{
-                client = Client,
-                pid = Pid,
-                request_id = RequestId,
-                timeout = Timeout,
-                timestamp = Timestamp
-            }},
-            {ok, RequestId};
-        {error, Reason} ->
-            {error, Reason}
-    end.
-
--spec receive_response(request_id()) ->
-    term() | {error, term()}.
-
-receive_response(RequestId) ->
-    receive
-        {#cast{request_id = RequestId}, Reply} ->
-            Reply
-    end.
+-spec receiveResponse(request_id()) -> term() | {error, term()}.
+receiveResponse(RequestId) ->
+   receive
+      {#cast{request_id = RequestId}, Reply} ->
+         Reply
+   end.
 

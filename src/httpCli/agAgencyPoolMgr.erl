@@ -8,13 +8,13 @@
    stopPool/1,
    getOneAgency/1,
 
+   %%  内部行为API
    start_link/3,
    init_it/3,
    system_code_change/4,
    system_continue/3,
    system_get_state/1,
    system_terminate/4,
-
    init/1,
    handleMsg/2,
    terminate/2
@@ -108,57 +108,57 @@ handleMsg(_Msg, State) ->
 
 %% public
 -spec startPool(poolName(), clientOpts()) -> ok | {error, pool_name_used}.
-startPool(Name, ClientOpts) ->
-   startPool(Name, ClientOpts, []).
+startPool(PoolName, ClientOpts) ->
+   startPool(PoolName, ClientOpts, []).
 
 -spec startPool(poolName(), clientOpts(), poolOpts()) -> ok | {error, pool_name_used}.
-startPool(Name, ClientOpts, PoolOpts) ->
-   case ?agBeamPool:get(Name) of
+startPool(PoolName, ClientOpts, PoolOpts) ->
+   case ?agBeamPool:get(PoolName) of
       undefined ->
-         gen_server:call(?MODULE, {startPool, Name, ClientOpts, PoolOpts});
+         gen_server:call(?MODULE, {startPool, PoolName, ClientOpts, PoolOpts});
       _ ->
          {error, pool_name_used}
    end.
 
 -spec stopPool(poolName()) -> ok | {error, pool_not_started}.
-stopPool(Name) ->
-   case ?agBeamPool:get(Name) of
+stopPool(PoolName) ->
+   case ?agBeamPool:get(PoolName) of
       undefined ->
          {error, pool_not_started};
       _ ->
-         gen_server:call(?MODULE, {stopPool, Name})
+         gen_server:call(?MODULE, {stopPool, PoolName})
 
    end.
 
-dealStart(Name, ClientOpts, PoolOpts) ->
+dealStart(PoolName, ClientOpts, PoolOpts) ->
    #poolOpts{poolSize = PoolSize} = PoolOptsRec = poolOptsToRec(PoolOpts),
-   startChildren(Name, ClientOpts, PoolOptsRec),
-   cacheAddPool(Name, PoolSize),
-   cacheAddAgency(Name, PoolSize),
+   startChildren(PoolName, ClientOpts, PoolOptsRec),
+   cacheAddPool(PoolName, PoolSize),
+   cacheAddAgency(PoolName, PoolSize),
    ok.
 
-delaStop(Name) ->
-   case ?agBeamPool:get(Name) of
+delaStop(PoolName) ->
+   case ?agBeamPool:get(PoolName) of
       undefined ->
          {error, pool_not_started};
       PoolSize ->
-         stopChildren(agencyNames(Name, PoolSize)),
-         cacheDelPool(Name),
-         cacheDelAgency(Name),
+         stopChildren(agencyNames(PoolName, PoolSize)),
+         cacheDelPool(PoolName),
+         cacheDelAgency(PoolName),
          ok
    end.
 
 poolOptsToRec(Options) ->
-   PoolSize = ?GET_FROM_LIST(poolSize, ?KEY_FIND(Options), ?DEFAULT_POOL_SIZE),
-   BacklogSize = ?GET_FROM_LIST(backlogSize, ?KEY_FIND(Options), ?DEFAULT_BACKLOG_SIZE),
-   PoolStrategy = ?GET_FROM_LIST(poolStrategy, ?KEY_FIND(Options), ?DEFAULT_POOL_STRATEGY),
+   PoolSize = ?GET_FROM_LIST(poolSize, Options, ?DEFAULT_POOL_SIZE),
+   BacklogSize = ?GET_FROM_LIST(backlogSize, Options, ?DEFAULT_BACKLOG_SIZE),
+   PoolStrategy = ?GET_FROM_LIST(poolStrategy, Options, ?DEFAULT_POOL_STRATEGY),
    #poolOpts{poolSize = PoolSize, backlogSize = BacklogSize, poolStrategy = PoolStrategy}.
 
-agencyName(Name, Index) ->
-   list_to_atom(atom_to_list(Name) ++ "_" ++ integer_to_list(Index)).
+agencyName(PoolName, Index) ->
+   list_to_atom(atom_to_list(PoolName) ++ "_" ++ integer_to_list(Index)).
 
-agencyNames(Name, PoolSize) ->
-   [agencyName(Name, N) || N <- lists:seq(1, PoolSize)].
+agencyNames(PoolName, PoolSize) ->
+   [agencyName(PoolName, N) || N <- lists:seq(1, PoolSize)].
 
 agencyMod(tcp) ->
    agTcpAgency;
@@ -167,22 +167,22 @@ agencyMod(ssl) ->
 agencyMod(_) ->
    agTcpAgency.
 
-agencySpec(ServerMod, ServerName, Name, ClientOptions) ->
-   StartFunc = {ServerMod, start_link, [ServerName, Name, ClientOptions]},
+agencySpec(ServerMod, ServerName, ClientOptions) ->
+   StartFunc = {ServerMod, start_link, [ServerName, ClientOptions, []]},
    {ServerName, StartFunc, permanent, 5000, worker, [ServerMod]}.
 
 -spec startChildren(atom(), clientOpts(), poolOpts()) -> ok.
-startChildren(Name, ClientOpts, #poolOpts{poolSize = PoolSize}) ->
-   Protocol = ?GET_FROM_LIST(protocol, ?KEY_FIND(ClientOpts), ?DEFAULT_PROTOCOL),
+startChildren(PoolName, ClientOpts, #poolOpts{poolSize = PoolSize}) ->
+   Protocol = ?GET_FROM_LIST(protocol, ClientOpts, ?DEFAULT_PROTOCOL),
    AgencyMod = agencyMod(Protocol),
-   AgencyNames = agencyNames(Name, PoolSize),
-   AgencySpecs = [agencySpec(AgencyMod, AgencyName, Name, ClientOpts) || AgencyName <- AgencyNames],
-   [supervisor:start_child(agHttpCli_sup, ServerSpec) || ServerSpec <- AgencySpecs],
+   AgencyNames = agencyNames(PoolName, PoolSize),
+   AgencySpecs = [agencySpec(AgencyMod, AgencyName, ClientOpts) || AgencyName <- AgencyNames],
+   [supervisor:start_child(agHttpCli_sup, AgencySpec) || AgencySpec <- AgencySpecs],
    ok.
 
-stopChildren([ServerName | T]) ->
-   supervisor:terminate_child(agHttpCli_sup, ServerName),
-   supervisor:delete_child(agHttpCli_sup, ServerName),
+stopChildren([AgencyName | T]) ->
+   supervisor:terminate_child(agHttpCli_sup, AgencyName),
+   supervisor:delete_child(agHttpCli_sup, AgencyName),
    stopChildren(T);
 stopChildren([]) ->
    ok.
@@ -193,8 +193,8 @@ cacheAddPool(Key, Value) ->
    agKvsToBeam:load(?agBeamPool, KVS),
    ok.
 
-cacheAddAgency(Name, PoolSize) ->
-   NameList = [{{Name, N}, agencyName(Name, N)} || N <- lists:seq(1, PoolSize)],
+cacheAddAgency(PoolName, PoolSize) ->
+   NameList = [{{PoolName, N}, agencyName(PoolName, N)} || N <- lists:seq(1, PoolSize)],
    ets:insert(?ETS_AG_Agency, NameList),
    KVS = ets:tab2list(?ETS_AG_Agency),
    agKvsToBeam:load(?agBeamAgency, KVS),
@@ -206,24 +206,24 @@ cacheDelPool(Key) ->
    agKvsToBeam:load(?agBeamPool, KVS),
    ok.
 
-cacheDelAgency(Name) ->
-   ets:match_delete(?ETS_AG_Agency, {{Name, '_'}, '_'}),
+cacheDelAgency(PoolName) ->
+   ets:match_delete(?ETS_AG_Agency, {{PoolName, '_'}, '_'}),
    KVS = ets:tab2list(?ETS_AG_Agency),
    agKvsToBeam:load(?agBeamAgency, KVS),
    ok.
 
-getOneAgency(Name) ->
-   case ?agBeamPool:get(Name) of
+getOneAgency(PoolName) ->
+   case ?agBeamPool:get(PoolName) of
       undefined ->
          {error, pool_not_found};
       PoolSize ->
-         Ref = persistent_term:get(Name),
+         Ref = persistent_term:get(PoolName),
          AgencyIdx = atomics:add_get(Ref, 1, 1),
          case AgencyIdx >= PoolSize of
             true ->
                atomics:put(Ref, 1, 0),
-               ?ETS_AG_Agency:get({Name, PoolSize});
+               ?ETS_AG_Agency:get({PoolName, PoolSize});
             _ ->
-               ?ETS_AG_Agency:get({Name, AgencyIdx})
+               ?ETS_AG_Agency:get({PoolName, AgencyIdx})
          end
    end.

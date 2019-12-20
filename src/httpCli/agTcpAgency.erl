@@ -1,28 +1,26 @@
 -module(agTcpAgency).
--include("shackle_internal.hrl").
+-include("agHttpCli.hrl").
 
 -compile(inline).
 -compile({inline_size, 512}).
 
 -export([
+    %% 内部行为API
     start_link/3,
     init_it/3,
     system_code_change/4,
     system_continue/3,
     system_get_state/1,
     system_terminate/4,
-
-    init/3,
-    handle_msg/2,
+    init/1,
+    handle_msg/4,
     terminate/2
 ]).
 
--record(state, {
-    client           :: client(),
-    init_options     :: init_options(),
+-record(srvState, {
+    initOpts         :: initOpts(),
     ip               :: inet:ip_address() | inet:hostname(),
-    name             :: server_name(),
-    parent           :: pid(),
+    name             :: serverName(),
     pool_name        :: pool_name(),
     port             :: inet:port_number(),
     reconnect_state  :: undefined | reconnect_state(),
@@ -31,17 +29,28 @@
     timer_ref        :: undefined | reference()
 }).
 
--type init_opts() :: {pool_name(), client(), client_options()}.
--type state() :: #state {}.
+-record(cliState, {
+    initOpts         :: initOpts(),
+    ip               :: inet:ip_address() | inet:hostname(),
+    name             :: serverName(),
+    pool_name        :: pool_name(),
+    port             :: inet:port_number(),
+    reconnect_state  :: undefined | reconnect_state(),
+    socket           :: undefined | inet:socket(),
+    socket_options   :: [gen_tcp:connect_option()],
+    timer_ref        :: undefined | reference()
+}).
+
+-type state() :: #srvState {}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  start %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 -spec start_link(module(), atom(), term(), [proc_lib:spawn_option()]) -> {ok, pid()}.
-start_link(Name, Args, SpawnOpts) ->
-    proc_lib:start_link(?MODULE, init_it, [Name, self(), Args], infinity, SpawnOpts).
+start_link(ServerName, Args, SpawnOpts) ->
+    proc_lib:start_link(?MODULE, init_it, [ServerName, self(), Args], infinity, SpawnOpts).
 
-init_it(Name, Parent, Args) ->
-    case safeRegister(Name) of
+init_it(ServerName, Parent, Args) ->
+    case safeRegister(ServerName) of
         true ->
             process_flag(trap_exit, true),
             moduleInit(Parent, Args);
@@ -51,20 +60,20 @@ init_it(Name, Parent, Args) ->
 
 %% sys callbacks
 -spec system_code_change(term(), module(), undefined | term(), term()) -> {ok, term()}.
-system_code_change(State, _Module, _OldVsn, _Extra) ->
-    {ok, State}.
+system_code_change(MiscState, _Module, _OldVsn, _Extra) ->
+    {ok, MiscState}.
 
 -spec system_continue(pid(), [], {module(), atom(), pid(), term()}) -> ok.
-system_continue(_Parent, _Debug, {Parent, State}) ->
-    loop(Parent, State).
+system_continue(_Parent, _Debug, {Parent, SrvState, CliState}) ->
+    loop(Parent, SrvState, CliState).
 
 -spec system_get_state(term()) -> {ok, term()}.
-system_get_state(State) ->
-    {ok, State}.
+system_get_state({_Parent, SrvState, _CliState}) ->
+    {ok, SrvState}.
 
 -spec system_terminate(term(), pid(), [], term()) -> none().
-system_terminate(Reason, _Parent, _Debug, _State) ->
-    exit(Reason).
+system_terminate(Reason, _Parent, _Debug, {_Parent, SrvState, CliState}) ->
+    terminate(Reason, SrvState, CliState).
 
 safeRegister(Name) ->
     try register(Name, self()) of
@@ -75,79 +84,52 @@ safeRegister(Name) ->
 
 moduleInit(Parent, Args) ->
     case ?MODULE:init(Args) of
-        {ok, State} ->
+        {ok, SrvState, CliState} ->
             proc_lib:init_ack(Parent, {ok, self()}),
-            loop(Parent, State);
+            loop(Parent, SrvState, CliState);
         {stop, Reason} ->
             proc_lib:init_ack(Parent, {error, Reason}),
             exit(Reason)
     end.
 
-loop(Parent, State) ->
+loop(Parent, SrvState, CliState) ->
     receive
         {system, From, Request} ->
-            sys:handle_system_msg(Request, From, Parent, ?MODULE, [], {Parent, State});
+            sys:handle_system_msg(Request, From, Parent, ?MODULE, [], {Parent, SrvState, CliState});
         {'EXIT', Parent, Reason} ->
-            terminate(Reason, State);
+            terminate(Reason, SrvState, CliState);
         Msg ->
-            {ok, NewState} = ?MODULE:handleMsg(Msg, State),
-            loop(Parent, NewState)
+            {ok, NewSrvState, NewCliState} = ?MODULE:handleMsg(Msg, SrvState, CliState),
+            loop(Parent, NewSrvState, NewCliState)
     end.
 
-terminate(Reason, State) ->
-    ?MODULE:terminate(Reason, State),
+terminate(Reason, SrvState, CliState) ->
+    ?MODULE:terminate(Reason, SrvState, CliState),
     exit(Reason).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  end %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% metal callbacks
--spec init(server_name(), pid(), init_opts()) ->
-    no_return().
-
-init(Name, Parent, Opts) ->
-    {PoolName, Client, ClientOptions} = Opts,
+-spec init(clientOpts()) -> no_return().
+init(ClientOpts) ->
     self() ! ?MSG_CONNECT,
-    ok = shackle_backlog:new(Name),
 
-    InitOptions = ?LOOKUP(init_options, ClientOptions,
-        ?DEFAULT_INIT_OPTS),
-    Ip = ?LOOKUP(ip, ClientOptions, ?DEFAULT_IP),
-    Port = ?LOOKUP(port, ClientOptions),
-    ReconnectState = agAgencyUtils:initReconnectState(ClientOptions),
-    SocketOptions = ?LOOKUP(socket_options, ClientOptions,
-        ?DEFAULT_SOCKET_OPTS),
+    %%ok = shackle_backlog:new(Name),
 
-    {ok, {#state {
-        client = Client,
-        init_options = InitOptions,
-        ip = Ip,
-        name = Name,
-        parent = Parent,
-        pool_name = PoolName,
-        port = Port,
-        reconnect_state = ReconnectState,
-        socket_options = SocketOptions
-    }, undefined}}.
+    InitOptions = ?GET_FROM_LIST(initOpts, ClientOpts, ?DEFAULT_INIT_OPTS),
+    Protocol = ?GET_FROM_LIST(protocol, ClientOpts, ?DEFAULT_PROTOCOL),
+    Ip = ?GET_FROM_LIST(ip, ClientOpts, ?DEFAULT_IP),
+    Port = ?GET_FROM_LIST(port, ClientOpts, ?DEFAULT_PORTO(Protocol)),
+    ReconnectState = agAgencyUtils:initReconnectState(ClientOpts),
+    SocketOptions = ?GET_FROM_LIST(socketOpts, ClientOptions, ?DEFAULT_SOCKET_OPTS),
+    {ok, #srvState{initOpts = InitOptions, ip = Ip, port = Port, reconnect_state = ReconnectState, socket_options = SocketOptions}, undefined}.
 
--spec handle_msg(term(), {state(), client_state()}) ->
-    {ok, term()}.
-
-handle_msg({_, #cast {} = Cast}, {#state {
-        socket = undefined,
-        name = Name
-    } = State, ClientState}) ->
-
-    agAgencyUtils:reply(Name, {error, no_socket}, Cast),
-    {ok, {State, ClientState}};
-handle_msg({Request, #cast {
-        timeout = Timeout
-    } = Cast}, {#state {
-        client = Client,
-        name = Name,
-        pool_name = PoolName,
-        socket = Socket
-    } = State, ClientState}) ->
-
+-spec handleMsg(term(), {state(), client_state()}) -> {ok, term()}.
+handleMsg({_, #request{} = Cast}, #srvState{socket = undefined, name = Name} = SrvState, CliState) ->
+    agAgencyUtils:agencyReply(Name, {error, no_socket}, Cast),
+    {ok, {SrvState, CliState}};
+handleMsg({Request, #request{timeout = Timeout} = Cast},
+   #srvState{name = Name, pool_name = PoolName, socket = Socket} = State,
+   ClientState) ->
     try agNetCli:handleRequest(Request, ClientState) of
         {ok, ExtRequestId, Data, ClientState2} ->
             case gen_tcp:send(Socket, Data) of
@@ -159,27 +141,24 @@ handle_msg({Request, #cast {
                 {error, Reason} ->
                     ?WARN(PoolName, "send error: ~p", [Reason]),
                     gen_tcp:close(Socket),
-                    agAgencyUtils:reply(Name, {error, socket_closed}, Cast),
+                    agAgencyUtils:agencyReply(Name, {error, socket_closed}, Cast),
                     close(State, ClientState2)
             end
     catch
         ?EXCEPTION(E, R, Stacktrace) ->
             ?WARN(PoolName, "handleRequest crash: ~p:~p~n~p~n",
                 [E, R, ?GET_STACK(Stacktrace)]),
-            agAgencyUtils:reply(Name, {error, client_crash}, Cast),
+            agAgencyUtils:agencyReply(Name, {error, client_crash}, Cast),
             {ok, {State, ClientState}}
     end;
-handle_msg({tcp, Socket, Data}, {#state {
-        client = Client,
-        name = Name,
-        pool_name = PoolName,
-        socket = Socket
-    } = State, ClientState}) ->
+handleMsg({tcp, Socket, Data},
+   #srvState{name = Name, pool_name = PoolName, socket = Socket} = SrvState,
+   CliState) ->
 
-    try agNetCli:handleData(Data, ClientState) of
+    try agNetCli:handleData(Data, CliState) of
         {ok, Replies, ClientState2} ->
             agAgencyUtils:agencyResponses(Replies, Name),
-            {ok, {State, ClientState2}};
+            {ok, SrvState, ClientState2};
         {error, Reason, ClientState2} ->
             ?WARN(PoolName, "handleData error: ~p", [Reason]),
             gen_tcp:close(Socket),
@@ -191,25 +170,25 @@ handle_msg({tcp, Socket, Data}, {#state {
             gen_tcp:close(Socket),
             close(State, ClientState)
     end;
-handle_msg({timeout, ExtRequestId}, {#state {
+handleMsg({timeout, ExtRequestId}, {#srvState{
         name = Name
     } = State, ClientState}) ->
 
     case shackle_queue:remove(Name, ExtRequestId) of
         {ok, Cast, _TimerRef} ->
-            agAgencyUtils:reply(Name, {error, timeout}, Cast);
+            agAgencyUtils:agencyReply(Name, {error, timeout}, Cast);
         {error, not_found} ->
             ok
     end,
     {ok, {State, ClientState}};
-handle_msg({tcp_closed, Socket}, {#state {
+handleMsg({tcp_closed, Socket}, {#srvState{
         socket = Socket,
         pool_name = PoolName
     } = State, ClientState}) ->
 
     ?WARN(PoolName, "connection closed", []),
     close(State, ClientState);
-handle_msg({tcp_error, Socket, Reason}, {#state {
+handleMsg({tcp_error, Socket, Reason}, {#srvState{
         socket = Socket,
         pool_name = PoolName
     } = State, ClientState}) ->
@@ -217,9 +196,9 @@ handle_msg({tcp_error, Socket, Reason}, {#state {
     ?WARN(PoolName, "connection error: ~p", [Reason]),
     gen_tcp:close(Socket),
     close(State, ClientState);
-handle_msg(?MSG_CONNECT, {#state {
+handleMsg(?MSG_CONNECT, {#srvState{
         client = Client,
-        init_options = Init,
+        initOpts = Init,
         ip = Ip,
         pool_name = PoolName,
         port = Port,
@@ -232,14 +211,14 @@ handle_msg(?MSG_CONNECT, {#state {
             ClientState2 = agHttpProtocol:bin_patterns(),
             ReconnectState2 = agAgencyUtils:resetReconnectState(ReconnectState),
 
-                    {ok, {State#state {
+                    {ok, {State#srvState{
                         reconnect_state = ReconnectState2,
                         socket = Socket
                     }, ClientState2}};
         {error, _Reason} ->
             reconnect(State, ClientState)
     end;
-handle_msg(Msg, {#state {
+handleMsg(Msg, {#srvState{
         pool_name = PoolName
     } = State, ClientState}) ->
 
@@ -249,7 +228,7 @@ handle_msg(Msg, {#state {
 -spec terminate(term(), term()) ->
     ok.
 
-terminate(_Reason, {#state {
+terminate(_Reason, {#srvState{
         client = Client,
         name = Name,
         pool_name = PoolName,
@@ -263,13 +242,13 @@ terminate(_Reason, {#state {
             ?WARN(PoolName, "terminate crash: ~p:~p~n~p~n",
                 [E, R, ?GET_STACK(Stacktrace)])
     end,
-    agAgencyUtils:reply_all(Name, {error, shutdown}),
+    agAgencyUtils:agencyReplyAll(Name, {error, shutdown}),
     shackle_backlog:delete(Name),
     ok.
 
 %% private
-close(#state {name = Name} = State, ClientState) ->
-    agAgencyUtils:reply_all(Name, {error, socket_closed}),
+close(#srvState{name = Name} = State, ClientState) ->
+    agAgencyUtils:agencyReplyAll(Name, {error, socket_closed}),
     reconnect(State, ClientState).
 
 connect(PoolName, Ip, Port, SocketOptions) ->
@@ -291,7 +270,7 @@ connect(PoolName, Ip, Port, SocketOptions) ->
 
 reconnect(State, undefined) ->
     reconnect_timer(State, undefined);
-reconnect(#state {
+reconnect(#srvState{
         client = Client,
         pool_name = PoolName
     } = State, ClientState) ->
@@ -304,14 +283,14 @@ reconnect(#state {
     end,
     reconnect_timer(State, ClientState).
 
-reconnect_timer(#state {
+reconnect_timer(#srvState{
         reconnect_state = undefined
     } = State, ClientState) ->
 
-    {ok, {State#state {
+    {ok, {State#srvState{
         socket = undefined
     }, ClientState}};
-reconnect_timer(#state {
+reconnect_timer(#srvState{
         reconnect_state = ReconnectState
     } = State, ClientState)  ->
 
@@ -319,7 +298,7 @@ reconnect_timer(#state {
     #reconnect_state {current = Current} = ReconnectState2,
     TimerRef = erlang:send_after(Current, self(), ?MSG_CONNECT),
 
-    {ok, {State#state {
+    {ok, {State#srvState{
         reconnect_state = ReconnectState2,
         socket = undefined,
         timer_ref = TimerRef

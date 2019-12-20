@@ -10,8 +10,8 @@
     agencyResponses/2,
     initReconnectState/1,
     resetReconnectState/1,
-    reply/3,
-    reply_all/2
+    agencyReply/3,
+    agencyReplyAll/2
 ]).
 
 -spec cancelTimer(undefined | reference()) -> ok.
@@ -30,14 +30,14 @@ cancelTimer(TimerRef) ->
             ok
     end.
 
--spec agencyResponses([response()], server_name()) -> ok.
+-spec agencyResponses([response()], serverName()) -> ok.
 agencyResponses([], _Name) ->
     ok;
 agencyResponses([{ExtRequestId, Reply} | T], Name) ->
     case shackle_queue:remove(Name, ExtRequestId) of
         {ok, Cast, TimerRef} ->
             erlang:cancel_timer(TimerRef),
-            reply(Name, Reply, Cast);
+            agencyReply(Name, Reply, Cast);
         {error, not_found} ->
             ok
     end,
@@ -45,11 +45,11 @@ agencyResponses([{ExtRequestId, Reply} | T], Name) ->
 
 -spec initReconnectState(client_options()) -> reconnect_state() | undefined.
 initReconnectState(Options) ->
-    IsReconnect = ?GET_FROM_LIST(reconnect, ?KEY_FIND(Options), ?DEFAULT_IS_RECONNECT),
+    IsReconnect = ?GET_FROM_LIST(reconnect, Options, ?DEFAULT_IS_RECONNECT),
     case IsReconnect of
         true ->
-            Max = ?GET_FROM_LIST(reconnectTimeMax, ?KEY_FIND(Options), ?DEFAULT_RECONNECT_MAX),
-            Min = ?GET_FROM_LIST(reconnectTimeMin, ?KEY_FIND(Options), ?DEFAULT_RECONNECT_MIN),
+            Max = ?GET_FROM_LIST(reconnectTimeMax, Options, ?DEFAULT_RECONNECT_MAX),
+            Min = ?GET_FROM_LIST(reconnectTimeMin, Options, ?DEFAULT_RECONNECT_MIN),
             #reconnectState{min = Min, max = Max};
         false ->
             undefined
@@ -59,23 +59,23 @@ initReconnectState(Options) ->
 resetReconnectState(ReconnectState) ->
     ReconnectState#reconnectState{current = undefined}.
 
--spec reply(server_name(), term(), undefined | cast()) -> ok.
-reply(Name, _Reply, #request{pid = undefined}) ->
+-spec agencyReply(serverName(), term(), undefined | cast()) -> ok.
+agencyReply(Name, _Reply, #request{pid = undefined}) ->
     shackle_backlog:decrement(Name),
     ok;
-reply(Name, Reply, #request{pid = Pid} = Request) ->
+agencyReply(Name, Reply, #request{pid = Pid} = Request) ->
     shackle_backlog:decrement(Name),
     Pid ! {Request, Reply},
     ok.
 
--spec reply_all(server_name(), term()) -> ok.
-reply_all(Name, Reply) ->
-    reply_all(Name, Reply, shackle_queue:clear(Name)).
+-spec agencyReplyAll(serverName(), term()) -> ok.
+agencyReplyAll(Name, Reply) ->
+    agencyReplyAll(Name, Reply, shackle_queue:clear(Name)).
 
 
-reply_all([{Cast, TimerRef} | T], Name, Reply) ->
+agencyReplyAll([{Cast, TimerRef} | T], Name, Reply) ->
     cancelTimer(TimerRef),
-    reply(Name, Reply, Cast),
-    reply_all(Name, Reply, T);
-reply_all([], _Name, _Reply) ->
+    agencyReply(Name, Reply, Cast),
+    agencyReplyAll(Name, Reply, T);
+agencyReplyAll([], _Name, _Reply) ->
     ok.

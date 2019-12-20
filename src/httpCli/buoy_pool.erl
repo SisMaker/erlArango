@@ -31,16 +31,16 @@ lookup(Protocol, Hostname, Port) ->
             {error, buoy_not_started}
     end.
 
--spec start(buoy_url()) ->
+-spec start(dbUrl()) ->
     ok | {error, pool_already_started | buoy_not_started}.
 
 start(Url) ->
     start(Url, ?DEFAULT_POOL_OPTIONS).
 
--spec start(buoy_url(), options()) ->
+-spec start(dbUrl(), options()) ->
     ok | {error, pool_already_started | buoy_not_started}.
 
-start(#buoy_url {
+start(#dbUrl {
         protocol = Protocol,
         hostname = Hostname,
         port = Port
@@ -61,10 +61,10 @@ start(#buoy_url {
             {error, buoy_not_started}
     end.
 
--spec stop(buoy_url()) ->
+-spec stop(dbUrl()) ->
     ok | {error,  pool_not_started | buoy_not_started}.
 
-stop(#buoy_url {
+stop(#dbUrl {
         protocol = Protocol,
         hostname = Hostname,
         port = Port

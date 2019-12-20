@@ -10,6 +10,7 @@
    , random/1
    , randomElement/1
    , warnMsg/3
+   , getListValue/3
 ]).
 
 -spec parseUrl(binary()) -> dbUrl() | {error, invalid_url}.
@@ -55,6 +56,13 @@ parseUrl(Protocol, Rest) ->
 
 ]).
 
+getListValue(Key, List, Default) ->
+   case lists:keyfind(Key, 1, List) of
+      false ->
+         Default;
+      {Key, Value} ->
+         Value
+   end.
 
 
 -spec random(pos_integer()) -> non_neg_integer().

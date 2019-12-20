@@ -6,7 +6,6 @@
 -define(DEFAULT_BACKLOG_SIZE, 1024).
 -define(DEFAULT_INIT_OPTS, undefined).
 -define(DEFAULT_CONNECT_TIMEOUT, 500).
--define(DEFAULT_PORT, 80).
 -define(DEFAULT_IP, <<"127.0.0.1">>).
 -define(DEFAULT_POOL_SIZE, 16).
 -define(DEFAULT_POOL_STRATEGY, random).
@@ -20,9 +19,10 @@
 -define(DEFAULT_HEADERS, []).
 -define(DEFAULT_PID, self()).
 -define(DEFAULT_PROTOCOL, tcp).
+-define(DEFAULT_PORTO(Protocol), case Protocol of tcp -> 80; _ -> 443 end).
 
--define(GET_FROM_LIST(Key, List), case lists:keyfind(Key, 1, List) of false -> undefined; {_, Value} -> Value end).
--define(GET_FROM_LIST(Key, List, Default), case lists:keyfind(Key, 1, List) of false -> Default; {_, Value} -> Value end).
+-define(GET_FROM_LIST(Key, List), agMiscUtils:getListValue(Key, List, undefined)).
+-define(GET_FROM_LIST(Key, List, Default), agMiscUtils:getListValue(Key, List, Default)).
 
 -define(WARN(PoolName, Format, Data), agMiscUtils:warnMsg(PoolName, Format, Data)).
 
@@ -31,7 +31,8 @@
    path     :: path(),
    port     :: 0..65535,
    hostname :: hostname(),
-   protocol :: httpType()
+   protocol :: httpType(),
+   poolName :: atom()               %% 请求该URL用到的poolName
 }).
 
 -record(requestRet, {
@@ -50,10 +51,17 @@
    timestamp      :: erlang:timestamp()
 }).
 
+-record(httpParam, {
+   headers = []      :: [binary()],
+   body = undefined  :: undefined | binary(),
+   pid = self()      :: pid(),
+   timeout = 1000    :: non_neg_integer()
+}).
+
 -record(poolOpts, {
-   poolSize     :: poolSize(),
-   backlogSize  :: backlogSize(),
-   poolStrategy :: poolStrategy()
+   poolSize       :: poolSize(),
+   backlogSize    :: backlogSize(),
+   poolStrategy   :: poolStrategy()
 }).
 
 -record(reconnectState, {
@@ -74,41 +82,35 @@
 -type body()          :: iodata() | undefined.
 -type options()       :: [option(), ...].
 -type option()        ::
-   {backlogSize, pos_integer()} |
-   {poolSize, pos_integer()} |
-   {poolStrategy, random | round_robin} |
-   {reconnect, boolean()} |
-   {reconnectTimeMin, pos_integer()} |
-   {reconnectTimeMax, pos_integer() | infinity}.
+{backlogSize, pos_integer()} |
+{poolSize, pos_integer()} |
+{poolStrategy, random | round_robin} |
+{reconnect, boolean()} |
+{reconnectTimeMin, pos_integer()} |
+{reconnectTimeMax, pos_integer() | infinity}.
 
--type buoy_opts() ::
-   #{
-      headers => headers(),
-      body    => body(),
-      pid     => pid(),
-      timeout => non_neg_integer()
-   }.
+-type httpParam() :: #httpParam{}.
 
 -type backlogSize() :: pos_integer() | infinity.
 -type request() :: #request{}.
 -type clientOpt() ::
-   {initOpts, term()} |
-   {ip, inet:ip_address() | inet:hostname()} |
-   {port, inet:port_number()} |
-   {protocol, protocol()} |
-   {reconnect, boolean()} |
-   {reconnectTimeMin, time()} |
-   {reconnectTimeMax, time() | infinity} |
-   {socketOpts, [gen_tcp:connect_option(), ...]}.
+{initOpts, term()} |
+{ip, inet:ip_address() | inet:hostname()} |
+{port, inet:port_number()} |
+{protocol, protocol()} |
+{reconnect, boolean()} |
+{reconnectTimeMin, time()} |
+{reconnectTimeMax, time() | infinity} |
+{socketOpts, [gen_tcp:connect_option(), ...]}.
 
 -type clientOpts() :: [clientOpt(), ...].
 -type clientState() :: term().
 -type externalRequestId() :: term().
 -type poolName() :: atom().
 -type poolOpt() ::
-   {poolSize, pool_size()} |
-   {backlogSize, backlog_size()} |
-   {poolstrategy, poolStrategy()}.
+{poolSize, poolSize()} |
+{backlogSize, backlogSize()} |
+{poolstrategy, poolStrategy()}.
 
 -type poolOpts() :: [poolOpt()].
 -type poolOptsRec() :: #poolOpts{}.
@@ -116,9 +118,9 @@
 -type poolStrategy() :: random | round_robin.
 -type protocol() :: ssl | tcp.
 -type reconnectState() :: #reconnectState{}.
--type requestId() :: {server_name(), reference()}.
--type response() :: {external_request_id(), term()}.
--type server_name() :: atom().
+-type requestId() :: {serverName(), reference()}.
+-type response() :: {externalRequestId(), term()}.
+-type serverName() :: atom().
 -type socket() :: inet:socket() | ssl:sslsocket().
 -type socketType() :: inet | ssl.
 -type time() :: pos_integer().

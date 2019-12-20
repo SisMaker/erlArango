@@ -136,7 +136,7 @@ handle_msg({_, #cast {} = Cast}, {#state {
         name = Name
     } = State, ClientState}) ->
 
-    agAgencyUtils:reply(Name, {error, no_socket}, Cast),
+    agAgencyUtils:agencyReply(Name, {error, no_socket}, Cast),
     {ok, {State, ClientState}};
 handle_msg({Request, #cast {
         timeout = Timeout
@@ -158,14 +158,14 @@ handle_msg({Request, #cast {
                 {error, Reason} ->
                     ?WARN(PoolName, "send error: ~p", [Reason]),
                     ssl:close(Socket),
-                    agAgencyUtils:reply(Name, {error, socket_closed}, Cast),
+                    agAgencyUtils:agencyReply(Name, {error, socket_closed}, Cast),
                     close(State, ClientState2)
             end
     catch
         ?EXCEPTION(E, R, Stacktrace) ->
             ?WARN(PoolName, "handleRequest crash: ~p:~p~n~p~n",
                 [E, R, ?GET_STACK(Stacktrace)]),
-            agAgencyUtils:reply(Name, {error, client_crash}, Cast),
+            agAgencyUtils:agencyReply(Name, {error, client_crash}, Cast),
             {ok, {State, ClientState}}
     end;
 handle_msg({ssl, Socket, Data}, {#state {
@@ -196,7 +196,7 @@ handle_msg({timeout, ExtRequestId}, {#state {
 
     case shackle_queue:remove(Name, ExtRequestId) of
         {ok, Cast, _TimerRef} ->
-            agAgencyUtils:reply(Name, {error, timeout}, Cast);
+            agAgencyUtils:agencyReply(Name, {error, timeout}, Cast);
         {error, not_found} ->
             ok
     end,
@@ -261,13 +261,13 @@ terminate(_Reason, {#state {
             ?WARN(PoolName, "terminate crash: ~p:~p~n~p~n",
                 [E, R, ?GET_STACK(Stacktrace)])
     end,
-    agAgencyUtils:reply_all(Name, {error, shutdown}),
+    agAgencyUtils:agencyReplyAll(Name, {error, shutdown}),
     shackle_backlog:delete(Name),
     ok.
 
 %% private
 close(#state {name = Name} = State, ClientState) ->
-    agAgencyUtils:reply_all(Name, {error, socket_closed}),
+    agAgencyUtils:agencyReplyAll(Name, {error, socket_closed}),
     reconnect(State, ClientState).
 
 connect(PoolName, Ip, Port, SocketOptions) ->
