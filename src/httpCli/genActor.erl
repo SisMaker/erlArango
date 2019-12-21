@@ -1,7 +1,7 @@
 -module(genActor).
 
 -compile(inline).
--compile({inline_size, 512}).
+-compile([{inline_size, 512}, nowarn_unused_function, nowarn_unused_vars, nowarn_export_all]).
 
 -export([
    start_link/3,
@@ -15,7 +15,7 @@
 ]).
 
 
--spec start_link(module(), atom(), term(), [proc_lib:spawn_option()]) -> {ok, pid()}.
+-spec start_link(term(), term(), list()) -> {ok, pid()} | {error, term()}.
 start_link(Name, Args, SpawnOpts) ->
    proc_lib:start_link(?MODULE, init_it, [Name, self(), Args], infinity, SpawnOpts).
 
@@ -28,7 +28,6 @@ init_it(Name, Parent, Args) ->
          proc_lib:init_ack(Parent, {error, {already_started, Pid}})
    end.
 
-%% sys callbacks
 -spec system_code_change(term(), module(), undefined | term(), term()) -> {ok, term()}.
 system_code_change(State, _Module, _OldVsn, _Extra) ->
    {ok, State}.
@@ -67,13 +66,13 @@ loop(Parent, State) ->
       {system, From, Request} ->
          sys:handle_system_msg(Request, From, Parent, ?MODULE, [], {Parent, State});
       {'EXIT', Parent, Reason} ->
-         terminate(Reason, State);
+         doTerminate(Reason, State);
       Msg ->
          {ok, NewState} = ?MODULE:handleMsg(Msg, State),
          loop(Parent, NewState)
    end.
 
-terminate(Reason, State) ->
+doTerminate(Reason, State) ->
    ?MODULE:terminate(Reason, State),
    exit(Reason).
 

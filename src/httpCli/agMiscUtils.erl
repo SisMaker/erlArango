@@ -7,8 +7,6 @@
 
 -export([
    parseUrl/1
-   , random/1
-   , randomElement/1
    , warnMsg/3
    , getListValue/3
 ]).
@@ -42,19 +40,7 @@ parseUrl(Protocol, Rest) ->
          [UrlHostname, UrlPort] ->
             {UrlHostname, binary_to_integer(UrlPort)}
       end,
-
-   #dbUrl{
-      host = Host,
-      path = Path,
-      port = Port,
-      hostname = Hostname,
-      protocol = Protocol
-   }.
-
-%% public
--export([
-
-]).
+   #dbUrl{host = Host, path = Path, port = Port, hostname = Hostname, protocol = Protocol}.
 
 getListValue(Key, List, Default) ->
    case lists:keyfind(Key, 1, List) of
@@ -64,20 +50,6 @@ getListValue(Key, List, Default) ->
          Value
    end.
 
-
--spec random(pos_integer()) -> non_neg_integer().
-random(1) -> 1;
-random(N) ->
-   rand:uniform(N).
-
--spec randomElement([term()]) -> term().
-
-randomElement([X]) ->
-   X;
-randomElement([_ | _] = List) ->
-   T = list_to_tuple(List),
-   element(random(tuple_size(T)), T).
-
--spec warnMsg(pool_name(), string(), [term()]) -> ok.
-warnMsg(Pool, Format, Data) ->
-   error_logger:warning_msg("[~p] " ++ Format, [Pool | Data]).
+-spec warnMsg(term(), string(), [term()]) -> ok.
+warnMsg(Tag, Format, Data) ->
+   error_logger:warning_msg("[~p] " ++ Format, [Tag | Data]).

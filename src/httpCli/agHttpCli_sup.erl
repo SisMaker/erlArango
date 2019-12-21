@@ -1,50 +1,17 @@
 -module(agHttpCli_sup).
--include("buoy_internal.hrl").
-
--export([
-    start_link/0
-]).
 
 -behaviour(supervisor).
+
 -export([
-    init/1
+   start_link/0
+   , init/1
 ]).
 
-%% public
--spec start_link() ->
-    {ok, pid()}.
-
+-spec start_link() -> {ok, pid()}.
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+   supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-%% supervisor callbacks
--spec init([]) ->
-    {ok, {{one_for_one, 5, 10}, []}}.
-
+-spec init([]) -> {ok, {{one_for_one, 5, 10}, []}}.
 init([]) ->
-    buoy_pool:init(),
-
-    {ok, {{one_for_one, 5, 10}, []}}.
-
--behaviour(supervisor).
--export([
-    init/1
-]).
-
-%% internal
--spec start_link() ->
-    {ok, pid()}.
-
-start_link() ->
-    supervisor:start_link({local, shackle_sup}, shackle_sup, []).
-
-%% supervisor callbacks
--spec init([]) ->
-    {ok, {{one_for_one, 5, 10}, []}}.
-
-init([]) ->
-    shackle_backlog:init(),
-    agAgencyPoolMgr:init(),
-    shackle_queue:init(),
-
-    {ok, {{one_for_one, 5, 10}, []}}.
+   PoolMgrSpec = {agAgencyPoolMgr, {agAgencyPoolMgr, start_link, [agAgencyPoolMgr, [], []]}, permanent, 5000, worker, [agAgencyPoolMgr]},
+   {ok, {{one_for_one, 100, 3600}, [PoolMgrSpec]}}.

@@ -91,7 +91,8 @@ terminate(Reason, State) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  end %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 -spec init(Args :: term()) -> ok.
 init(_Args) ->
-   ets:new(?ETS_AG_Pool, [named_table, set, public]),
+   ets:new(?ETS_AG_Pool, [named_table, set, protected]),
+   ets:new(?ETS_AG_Agency, [named_table, set, protected]),
    {ok, #state{}}.
 
 handleMsg({'$gen_call', From, {startPool, Name, ClientOpts, PoolOpts}}, State) ->

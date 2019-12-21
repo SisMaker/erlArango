@@ -23,7 +23,7 @@
     ip               :: inet:ip_address() | inet:hostname(),
     name             :: server_name(),
     parent           :: pid(),
-    pool_name        :: pool_name(),
+    poolName        :: poolName(),
     port             :: inet:port_number(),
     reconnect_state  :: undefined | reconnect_state(),
     socket           :: undefined | ssl:sslsocket(),
@@ -31,7 +31,7 @@
     timer_ref        :: undefined | reference()
 }).
 
--type init_opts() :: {pool_name(), client(), client_options()}.
+-type init_opts() :: {poolName(), client(), client_options()}.
 -type state() :: #state {}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  start %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -106,7 +106,6 @@ terminate(Reason, State) ->
 init(Name, Parent, Opts) ->
     {PoolName, Client, ClientOptions} = Opts,
     self() ! ?MSG_CONNECT,
-    ok = shackle_backlog:new(Name),
 
     InitOptions = ?LOOKUP(init_options, ClientOptions,
         ?DEFAULT_INIT_OPTS),
@@ -122,7 +121,7 @@ init(Name, Parent, Opts) ->
         ip = Ip,
         name = Name,
         parent = Parent,
-        pool_name = PoolName,
+        poolName = PoolName,
         port = Port,
         reconnect_state = ReconnectState,
         socket_options = SocketOptions
@@ -143,7 +142,7 @@ handle_msg({Request, #cast {
     } = Cast}, {#state {
         client = Client,
         name = Name,
-        pool_name = PoolName,
+        poolName = PoolName,
         socket = Socket
     } = State, ClientState}) ->
 
@@ -171,7 +170,7 @@ handle_msg({Request, #cast {
 handle_msg({ssl, Socket, Data}, {#state {
         client = Client,
         name = Name,
-        pool_name = PoolName,
+        poolName = PoolName,
         socket = Socket
     } = State, ClientState}) ->
 
@@ -203,14 +202,14 @@ handle_msg({timeout, ExtRequestId}, {#state {
     {ok, {State, ClientState}};
 handle_msg({ssl_closed, Socket}, {#state {
         socket = Socket,
-        pool_name = PoolName
+        poolName = PoolName
     } = State, ClientState}) ->
 
     ?WARN(PoolName, "connection closed", []),
     close(State, ClientState);
 handle_msg({ssl_error, Socket, Reason}, {#state {
         socket = Socket,
-        pool_name = PoolName
+        poolName = PoolName
     } = State, ClientState}) ->
 
     ?WARN(PoolName, "connection error: ~p", [Reason]),
@@ -220,7 +219,7 @@ handle_msg(?MSG_CONNECT, {#state {
         client = Client,
         init_options = Init,
         ip = Ip,
-        pool_name = PoolName,
+        poolName = PoolName,
         port = Port,
         reconnect_state = ReconnectState,
         socket_options = SocketOptions
@@ -228,7 +227,7 @@ handle_msg(?MSG_CONNECT, {#state {
 
     case connect(PoolName, Ip, Port, SocketOptions) of
         {ok, Socket} ->
-            ClientState2 = agHttpProtocol:bin_patterns(),
+            ClientState2 = agHttpProtocol:binPatterns(),
                     ReconnectState2 = agAgencyUtils:resetReconnectState(ReconnectState),
                     {ok, {State#state {
                         reconnect_state = ReconnectState2,
@@ -238,7 +237,7 @@ handle_msg(?MSG_CONNECT, {#state {
             reconnect(State, ClientState)
     end;
 handle_msg(Msg, {#state {
-        pool_name = PoolName
+        poolName = PoolName
     } = State, ClientState}) ->
 
     ?WARN(PoolName, "unknown msg: ~p", [Msg]),
@@ -250,7 +249,7 @@ handle_msg(Msg, {#state {
 terminate(_Reason, {#state {
         client = Client,
         name = Name,
-        pool_name = PoolName,
+        poolName = PoolName,
         timer_ref = TimerRef
     }, ClientState}) ->
 
@@ -262,7 +261,6 @@ terminate(_Reason, {#state {
                 [E, R, ?GET_STACK(Stacktrace)])
     end,
     agAgencyUtils:agencyReplyAll(Name, {error, shutdown}),
-    shackle_backlog:delete(Name),
     ok.
 
 %% private
@@ -291,7 +289,7 @@ reconnect(State, undefined) ->
     reconnect_timer(State, undefined);
 reconnect(#state {
         client = Client,
-        pool_name = PoolName
+        poolName = PoolName
     } = State, ClientState) ->
 
     try agNetCli:terminate(ClientState)

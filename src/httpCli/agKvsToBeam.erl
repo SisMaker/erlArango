@@ -4,7 +4,10 @@
    load/2
 ]).
 
--spec load(namespace(), [{key(), value()}]) -> ok.
+-type key() :: atom() | binary() | float() | integer() | list() | tuple().
+-type value() :: atom() | binary() | float() | integer() | list() | tuple().
+
+-spec load(term(), [{key(), value()}]) -> ok.
 load(Module, KVs) ->
    Forms = forms(Module, KVs),
    {ok, Module, Bin} = compile:forms(Forms),
