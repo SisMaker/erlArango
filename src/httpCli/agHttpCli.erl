@@ -117,7 +117,7 @@ castAgency(PoolName, Request, Pid) ->
 
 -spec castAgency(poolName(), term(), pid(), timeout()) -> {ok, requestId()} | {error, atom()}.
 castAgency(PoolName, RequestContent, Pid, Timeout) ->
-   case agAgencyPoolMgrExm:getOneAgency(PoolName) of
+   case agAgencyPoolMgrIns:getOneAgency(PoolName) of
       {error, pool_not_found} = Error ->
          Error;
       undefined ->
