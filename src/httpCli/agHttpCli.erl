@@ -5,26 +5,30 @@
 -compile({inline_size, 512}).
 
 -export([
-   syncGet/3,
-   syncPost/3,
-   syncPut/3,
-   syncGet/4,
-   syncPost/4,
-   syncPut/4,
-   syncRequest/5,
+   syncGet/3
+   , syncPost/3
+   , syncPut/3
+   , syncGet/4
+   , syncPost/4
+   , syncPut/4
+   , syncRequest/5
 
-   asyncGet/2,
-   asyncPost/2,
-   asyncPut/2,
-   asyncCustom/3,
-   asyncRequest/3,
+   , asyncGet/2
+   , asyncPost/2
+   , asyncPut/2
+   , asyncCustom/3
+   , asyncRequest/3
 
-   callAgency/2,
-   callAgency/3,
-   castAgency/2,
-   castAgency/3,
-   castAgency/4,
-   receiveResponse/1
+   , callAgency/2
+   , callAgency/3
+   , castAgency/2
+   , castAgency/3
+   , castAgency/4
+   , receiveResponse/1
+
+   , startPool/2
+   , startPool/3
+   , stopPool/1
 
 ]).
 
@@ -113,7 +117,7 @@ castAgency(PoolName, Request, Pid) ->
 
 -spec castAgency(poolName(), term(), pid(), timeout()) -> {ok, requestId()} | {error, atom()}.
 castAgency(PoolName, RequestContent, Pid, Timeout) ->
-   case agAgencyPoolMgr:getOneAgency(PoolName) of
+   case agAgencyPoolMgrExm:getOneAgency(PoolName) of
       {error, pool_not_found} = Error ->
          Error;
       undefined ->
@@ -130,4 +134,17 @@ receiveResponse(RequestId) ->
       {#miAgHttpCliRet{requestId = RequestId}, Reply} ->
          Reply
    end.
+
+-spec startPool(poolName(), clientOpts()) -> ok | {error, pool_name_used}.
+startPool(PoolName, ClientOpts) ->
+   agAgencyPoolMgrIns:startPool(PoolName, ClientOpts, []).
+
+-spec startPool(poolName(), clientOpts(), poolOpts()) -> ok | {error, pool_name_used}.
+startPool(PoolName, ClientOpts, PoolOpts) ->
+   agAgencyPoolMgrIns:startPool(PoolName, ClientOpts, PoolOpts).
+
+
+-spec stopPool(poolName()) -> ok | {error, pool_not_started}.
+stopPool(PoolName) ->
+   agAgencyPoolMgrIns:stopPool(PoolName).
 

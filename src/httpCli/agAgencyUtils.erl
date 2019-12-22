@@ -82,7 +82,7 @@ initReconnectState(Options) ->
       true ->
          Max = ?GET_FROM_LIST(reconnectTimeMax, Options, ?DEFAULT_RECONNECT_MAX),
          Min = ?GET_FROM_LIST(reconnectTimeMin, Options, ?DEFAULT_RECONNECT_MIN),
-         #reconnectState{min = Min, max = Max};
+         #reconnectState{min = Min, max = Max, current = Min};
       false ->
          undefined
    end.

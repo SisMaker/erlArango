@@ -1,9 +1,6 @@
-%%%-------------------------------------------------------------------
-%% @doc erlArango top level supervisor.
-%% @end
-%%%-------------------------------------------------------------------
-
 -module(erlArango_sup).
+
+-include("erlArango.hrl").
 
 -behaviour(supervisor).
 
@@ -18,6 +15,7 @@ start_link() ->
 
 init([]) ->
    SupFlags = #{strategy => one_for_one, intensity => 100, period => 3600},
+   PoolMgrSpec = {agAgencyPoolMgrExm, {agAgencyPoolMgrExm, start_link, [?agAgencyPoolMgr, [], []]}, permanent, 5000, worker, [agAgencyPoolMgrExm]},
    HttpCliSupSpec = {agHttpCli_sup, {agHttpCli_sup, start_link, []}, permanent, 5000, supervisor, [agHttpCli_sup]},
-   {ok, {SupFlags, [HttpCliSupSpec]}}.
+   {ok, {SupFlags, [PoolMgrSpec, HttpCliSupSpec]}}.
 

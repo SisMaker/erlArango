@@ -9,6 +9,7 @@
    parseUrl/1
    , warnMsg/3
    , getListValue/3
+   , randomElement/1
 ]).
 
 -spec parseUrl(binary()) -> dbUrl() | {error, invalid_url}.
@@ -53,3 +54,10 @@ getListValue(Key, List, Default) ->
 -spec warnMsg(term(), string(), [term()]) -> ok.
 warnMsg(Tag, Format, Data) ->
    error_logger:warning_msg("[~p] " ++ Format, [Tag | Data]).
+
+-spec randomElement([term()]) -> term().
+randomElement([X]) ->
+   X;
+randomElement([_ | _] = List) ->
+   T = list_to_tuple(List),
+   element(rand:uniform(tuple_size(T)), T).

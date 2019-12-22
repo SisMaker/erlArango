@@ -1,4 +1,4 @@
--module(agTcpAgency).
+-module(agTcpAgencyIns).
 -include("agHttpCli.hrl").
 
 -compile(inline).
@@ -6,15 +6,9 @@
 
 -export([
    %% 内部行为API
-   start_link/3,
-   init_it/3,
-   system_code_change/4,
-   system_continue/3,
-   system_get_state/1,
-   system_terminate/4,
    init/1,
    handleMsg/3,
-   terminate/2
+   terminate/3
 ]).
 
 -record(srvState, {
@@ -31,72 +25,6 @@
 }).
 
 -type srvState() :: #srvState{}.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  start %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
--spec start_link(module(), term(), [proc_lib:spawn_option()]) -> {ok, pid()}.
-start_link(ServerName, Args, SpawnOpts) ->
-   proc_lib:start_link(?MODULE, init_it, [ServerName, self(), Args], infinity, SpawnOpts).
-
-init_it(ServerName, Parent, Args) ->
-   case safeRegister(ServerName) of
-      true ->
-         process_flag(trap_exit, true),
-         moduleInit(Parent, Args);
-      {false, Pid} ->
-         proc_lib:init_ack(Parent, {error, {already_started, Pid}})
-   end.
-
-%% sys callbacks
--spec system_code_change(term(), module(), undefined | term(), term()) -> {ok, term()}.
-system_code_change(MiscState, _Module, _OldVsn, _Extra) ->
-   {ok, MiscState}.
-
--spec system_continue(pid(), [], {module(), srvState(), cliState()}) -> ok.
-system_continue(_Parent, _Debug, {Parent, SrvState, CliState}) ->
-   loop(Parent, SrvState, CliState).
-
--spec system_get_state(term()) -> {ok, srvState()}.
-system_get_state({_Parent, SrvState, _CliState}) ->
-   {ok, SrvState}.
-
--spec system_terminate(term(), pid(), [], term()) -> none().
-system_terminate(Reason, _Parent, _Debug, {_Parent, SrvState, CliState}) ->
-   terminate(Reason, SrvState, CliState).
-
-safeRegister(ServerName) ->
-   try register(ServerName, self()) of
-      true -> true
-   catch
-      _:_ -> {false, whereis(ServerName)}
-   end.
-
-moduleInit(Parent, Args) ->
-   case ?MODULE:init(Args) of
-      {ok, SrvState, CliState} ->
-         proc_lib:init_ack(Parent, {ok, self()}),
-         loop(Parent, SrvState, CliState);
-      {stop, Reason} ->
-         proc_lib:init_ack(Parent, {error, Reason}),
-         exit(Reason)
-   end.
-
-loop(Parent, SrvState, CliState) ->
-   receive
-      {system, From, Request} ->
-         sys:handle_system_msg(Request, From, Parent, ?MODULE, [], {Parent, SrvState, CliState});
-      {'EXIT', Parent, Reason} ->
-         terminate(Reason, SrvState, CliState);
-      Msg ->
-         {ok, NewSrvState, NewCliState} = ?MODULE:handleMsg(Msg, SrvState, CliState),
-         loop(Parent, NewSrvState, NewCliState)
-   end.
-
-terminate(Reason, SrvState, CliState) ->
-   ?MODULE:terminate(Reason, SrvState, CliState),
-   exit(Reason).
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  end %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 -spec init(clientOpts()) -> no_return().
 init(ClientOpts) ->
@@ -127,8 +55,7 @@ handleMsg({miRequest, FromPid, RequestContent, RequestId, Timeout},
             {ok, ExtRequestId, Data, NewClientState} ->
                case gen_tcp:send(Socket, Data) of
                   ok ->
-                     Msg = {timeout, ExtRequestId},
-                     TimerRef = erlang:send_after(Timeout, self(), Msg),
+                     TimerRef = erlang:start_timer(Timeout, self(), ExtRequestId),
                      agAgencyUtils:addQueue(ExtRequestId, RequestId, TimerRef),
                      {ok, {SrvState, NewClientState}};
                   {error, Reason} ->
@@ -161,7 +88,7 @@ handleMsg({tcp, Socket, Data},
          gen_tcp:close(Socket),
          dealClose(SrvState, CliState)
    end;
-handleMsg({timeout, ExtRequestId},
+handleMsg({timeout, _TimerRef, ExtRequestId},
    #srvState{serverName = ServerName} = SrvState,
    CliState) ->
    case agAgencyUtils:delQueue(ServerName, ExtRequestId) of
@@ -198,13 +125,12 @@ handleMsg(Msg, #srvState{serverName = ServerName} = SrvState, CliState) ->
    ?WARN(ServerName, "unknown msg: ~p", [Msg]),
    {ok, SrvState, CliState}.
 
--spec terminate(term(), term()) -> ok.
+-spec terminate(term(), srvState(), cliState()) -> ok.
 terminate(_Reason,
-   {#srvState{serverName = ServerName, timerRef = TimerRef},
-      _CliState}) ->
-
-   agAgencyUtils:cancel_timer(TimerRef),
-   agAgencyUtils:agencyReplyAll(ServerName, {error, shutdown}),
+   #srvState{timerRef = TimerRef},
+      _CliState) ->
+   agAgencyUtils:cancelTimer(TimerRef),
+   agAgencyUtils:agencyReplyAll({error, shutdown}),
    ok.
 
 dealConnect(ServerName, Ip, Port, SocketOptions) ->
@@ -224,13 +150,13 @@ dealConnect(ServerName, Ip, Port, SocketOptions) ->
          {error, Reason}
    end.
 
-dealClose(#srvState{serverName = ServerName} = SrvState, ClientState) ->
-   agAgencyUtils:agencyReplyAll(ServerName, {error, socket_closed}),
+dealClose(SrvState, ClientState) ->
+   agAgencyUtils:agencyReplyAll({error, socket_closed}),
    reconnectTimer(SrvState, ClientState).
 
 reconnectTimer(#srvState{reconnectState = undefined} = SrvState, CliState) ->
    {ok, {SrvState#srvState{socket = undefined}, CliState}};
 reconnectTimer(#srvState{reconnectState = ReconnectState} = SrvState, CliState) ->
    #reconnectState{current = Current} = MewReconnectState = agAgencyUtils:updateReconnectState(ReconnectState),
-   TimerRef = erlang:start_timer(Current, self(), ?miDoNetConnect),
+   TimerRef = erlang:send_after(Current, self(), ?miDoNetConnect),
    {ok, SrvState#srvState{reconnectState = MewReconnectState, socket = undefined, timerRef = TimerRef}, CliState}.

@@ -13,5 +13,4 @@ start_link() ->
 
 -spec init([]) -> {ok, {{one_for_one, 5, 10}, []}}.
 init([]) ->
-   PoolMgrSpec = {agAgencyPoolMgr, {agAgencyPoolMgr, start_link, [agAgencyPoolMgr, [], []]}, permanent, 5000, worker, [agAgencyPoolMgr]},
-   {ok, {{one_for_one, 100, 3600}, [PoolMgrSpec]}}.
+   {ok, {{one_for_one, 100, 3600}, []}}.

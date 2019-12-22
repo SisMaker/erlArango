@@ -1,23 +1,17 @@
--module(agAgencyPoolMgr).
+-module(agAgencyPoolMgrIns).
 
 -include("agHttpCli.hrl").
+-include("erlArango.hrl").
 
 -export([
-   startPool/2,
-   startPool/3,
-   stopPool/1,
-   getOneAgency/1,
+   startPool/2
+   , startPool/3
+   , stopPool/1
+   , getOneAgency/1
 
-   %%  内部行为API
-   start_link/3,
-   init_it/3,
-   system_code_change/4,
-   system_continue/3,
-   system_get_state/1,
-   system_terminate/4,
-   init/1,
-   handleMsg/2,
-   terminate/2
+   , init/1
+   , handleMsg/2
+   , terminate/2
 ]).
 
 %% k-v缓存表
@@ -25,74 +19,12 @@
 -define(ETS_AG_Agency, ets_ag_Agency).
 -record(state, {}).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  start %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
--spec start_link(module(), term(), [proc_lib:spawn_option()]) -> {ok, pid()}.
-start_link(Name, Args, SpawnOpts) ->
-   proc_lib:start_link(?MODULE, init_it, [Name, self(), Args], infinity, SpawnOpts).
-
-init_it(Name, Parent, Args) ->
-   case safeRegister(Name) of
-      true ->
-         process_flag(trap_exit, true),
-         moduleInit(Parent, Args);
-      {false, Pid} ->
-         proc_lib:init_ack(Parent, {error, {already_started, Pid}})
-   end.
-
-%% sys callbacks
--spec system_code_change(term(), module(), undefined | term(), term()) -> {ok, term()}.
-system_code_change(State, _Module, _OldVsn, _Extra) ->
-   {ok, State}.
-
--spec system_continue(pid(), [], {module(), atom(), pid(), term()}) -> ok.
-system_continue(_Parent, _Debug, {Parent, State}) ->
-   loop(Parent, State).
-
--spec system_get_state(term()) -> {ok, term()}.
-system_get_state(State) ->
-   {ok, State}.
-
--spec system_terminate(term(), pid(), [], term()) -> none().
-system_terminate(Reason, _Parent, _Debug, _State) ->
-   exit(Reason).
-
-safeRegister(Name) ->
-   try register(Name, self()) of
-      true -> true
-   catch
-      _:_ -> {false, whereis(Name)}
-   end.
-
-moduleInit(Parent, Args) ->
-   case ?MODULE:init(Args) of
-      {ok, State} ->
-         proc_lib:init_ack(Parent, {ok, self()}),
-         loop(Parent, State);
-      {stop, Reason} ->
-         proc_lib:init_ack(Parent, {error, Reason}),
-         exit(Reason)
-   end.
-
-loop(Parent, State) ->
-   receive
-      {system, From, Request} ->
-         sys:handle_system_msg(Request, From, Parent, ?MODULE, [], {Parent, State});
-      {'EXIT', Parent, Reason} ->
-         terminate(Reason, State);
-      Msg ->
-         {ok, NewState} = ?MODULE:handleMsg(Msg, State),
-         loop(Parent, NewState)
-   end.
-
-terminate(Reason, State) ->
-   ?MODULE:terminate(Reason, State),
-   exit(Reason).
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  end %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 -spec init(Args :: term()) -> ok.
 init(_Args) ->
    ets:new(?ETS_AG_Pool, [named_table, set, protected]),
    ets:new(?ETS_AG_Agency, [named_table, set, protected]),
+   agKvsToBeam:load(?agBeamPool, []),
+   agKvsToBeam:load(?agBeamAgency, []),
    {ok, #state{}}.
 
 handleMsg({'$gen_call', From, {startPool, Name, ClientOpts, PoolOpts}}, State) ->
@@ -104,10 +36,12 @@ handleMsg({'$gen_call', From, {stopPool, Name}}, State) ->
    gen_server:reply(From, ok),
    {ok, State};
 handleMsg(_Msg, State) ->
-   ?WARN(agAgencyPoolMgr, "receive unexpected  msg: ~p", [_Msg]),
+   ?WARN(?MODULE, "receive unexpected  msg: ~p", [_Msg]),
    {ok, State}.
 
-%% public
+terminate(_Reason, _State) ->
+   ok.
+
 -spec startPool(poolName(), clientOpts()) -> ok | {error, pool_name_used}.
 startPool(PoolName, ClientOpts) ->
    startPool(PoolName, ClientOpts, []).
@@ -116,7 +50,7 @@ startPool(PoolName, ClientOpts) ->
 startPool(PoolName, ClientOpts, PoolOpts) ->
    case ?agBeamPool:get(PoolName) of
       undefined ->
-         gen_server:call(?MODULE, {startPool, PoolName, ClientOpts, PoolOpts});
+         gen_server:call(?agAgencyPoolMgr, {startPool, PoolName, ClientOpts, PoolOpts});
       _ ->
          {error, pool_name_used}
    end.
@@ -127,7 +61,7 @@ stopPool(PoolName) ->
       undefined ->
          {error, pool_not_started};
       _ ->
-         gen_server:call(?MODULE, {stopPool, PoolName})
+         gen_server:call(?agAgencyPoolMgr, {stopPool, PoolName})
 
    end.
 
@@ -136,6 +70,13 @@ dealStart(PoolName, ClientOpts, PoolOpts) ->
    startChildren(PoolName, ClientOpts, PoolOptsRec),
    cacheAddPool(PoolName, PoolSize),
    cacheAddAgency(PoolName, PoolSize),
+   case persistent_term:get(PoolName, undefined) of
+      undefined ->
+         IndexRef = atomics:new(1, [{signed, false}]),
+         persistent_term:put(PoolName, IndexRef);
+      _ ->
+         ignore
+   end,
    ok.
 
 delaStop(PoolName) ->
@@ -162,15 +103,15 @@ agencyNames(PoolName, PoolSize) ->
    [agencyName(PoolName, N) || N <- lists:seq(1, PoolSize)].
 
 agencyMod(tcp) ->
-   agTcpAgency;
+   agTcpAgencyExm;
 agencyMod(ssl) ->
-   agSslAgency;
+   agSslAgencyExm;
 agencyMod(_) ->
-   agTcpAgency.
+   agTcpAgencyExm.
 
 agencySpec(ServerMod, ServerName, ClientOptions) ->
    StartFunc = {ServerMod, start_link, [ServerName, ClientOptions, []]},
-   {ServerName, StartFunc, permanent, 5000, worker, [ServerMod]}.
+   {ServerName, StartFunc, transient, 5000, worker, [ServerMod]}.
 
 -spec startChildren(atom(), clientOpts(), poolOpts()) -> ok.
 startChildren(PoolName, ClientOpts, #poolOpts{poolSize = PoolSize}) ->
@@ -223,8 +164,8 @@ getOneAgency(PoolName) ->
          case AgencyIdx >= PoolSize of
             true ->
                atomics:put(Ref, 1, 0),
-               ?ETS_AG_Agency:get({PoolName, PoolSize});
+               ?agBeamAgency:get({PoolName, PoolSize});
             _ ->
-               ?ETS_AG_Agency:get({PoolName, AgencyIdx})
+               ?agBeamAgency:get({PoolName, AgencyIdx})
          end
    end.

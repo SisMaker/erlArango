@@ -25,10 +25,10 @@
 %%% ----------------------------------------------------------------------------
 
 -record(lhttpc_url, {
-    host :: string(),
-    port :: integer(),
-    path :: string(),
-    is_ssl:: boolean(),
-    user = "" :: string(),
-    password = "" :: string()
+   host :: string(),
+   port :: integer(),
+   path :: string(),
+   is_ssl :: boolean(),
+   user = "" :: string(),
+   password = "" :: string()
 }).
