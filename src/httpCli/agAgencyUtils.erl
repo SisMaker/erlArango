@@ -69,6 +69,8 @@ cancelTimer(TimerRef) ->
             {timeout, TimerRef, _Msg} ->
                %% 丢弃该超时消息
                ok
+         after 0 ->
+            ok
          end;
       _ ->
          %% Timer 已经运行了
