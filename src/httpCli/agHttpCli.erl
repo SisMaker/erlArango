@@ -90,9 +90,9 @@ asyncCustom(Verb, Url, HttpParam) ->
 
 -spec asyncRequest(method(), dbUrl(), httpParam()) -> {ok, requestId()} | error().
 asyncRequest(Method,
-   #dbUrl{host = Host, path = Path, poolName = PoolName},
+   #dbUrl{path = Path, poolName = PoolName},
    #httpParam{headers = Headers, body = Body, pid = Pid, timeout = Timeout}) ->
-   RequestContent = {Method, Host, Path, Headers, Body},
+   RequestContent = {Method, Path, Headers, Body},
    castAgency(PoolName, RequestContent, Pid, Timeout).
 
 -spec callAgency(poolName(), term()) -> term() | {error, term()}.
@@ -103,6 +103,7 @@ callAgency(PoolName, Request) ->
 callAgency(PoolName, Request, Timeout) ->
    case castAgency(PoolName, Request, self(), Timeout) of
       {ok, RequestId} ->
+         % io:format("IMY************************ todo receiveResponse ~p ~n", [RequestId]),
          receiveResponse(RequestId);
       {error, Reason} ->
          {error, Reason}
@@ -132,8 +133,11 @@ castAgency(PoolName, RequestContent, Pid, Timeout) ->
 -spec receiveResponse(requestId()) -> term() | {error, term()}.
 receiveResponse(RequestId) ->
    receive
-      {#miAgHttpCliRet{requestId = RequestId}, Reply} ->
+      #miAgHttpCliRet{requestId = RequestId, reply = Reply} ->
+         % io:format("IMY************************ miAgHttpCliRet ~p ~n", [ok]),
          Reply
+      after 5000 ->
+         timeout
    end.
 
 -spec startPool(poolName(), poolCfgs()) -> ok | {error, pool_name_used}.

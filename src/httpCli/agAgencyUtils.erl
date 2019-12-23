@@ -35,6 +35,7 @@ clearQueue() ->
 agencyResponses([{ExtRequestId, Reply} | T], ServerName) ->
    case agAgencyUtils:delQueue(ExtRequestId) of
       {FormPid, RequestId, TimerRef} ->
+         % io:format("IMY**************************agencyResponses ~p ~p ~n",[FormPid, Reply]),
          agencyReply(FormPid, RequestId, TimerRef, Reply);
       _ ->
          ?WARN(ServerName, " agencyResponses not found ExtRequestId ~p~n", [ExtRequestId]),

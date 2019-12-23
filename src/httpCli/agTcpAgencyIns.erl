@@ -14,6 +14,8 @@
 -record(srvState, {
    poolName :: poolName(),
    serverName :: serverName(),
+   userPassWord :: binary(),
+   host :: binary(),
    reconnectState :: undefined | reconnectState(),
    socket :: undefined | inet:socket(),
    socketOpts :: [gen_tcp:connect_option()],
@@ -37,16 +39,15 @@ handleMsg({miRequest, FromPid, _RequestContent, RequestId, _Timeout},
    agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, no_socket}),
    {ok, SrvState, CliState};
 handleMsg({miRequest, FromPid, RequestContent, RequestId, Timeout},
-   #srvState{serverName = ServerName, socket = Socket} = SrvState,
+   #srvState{serverName = ServerName, host = Host, userPassWord = UserPassWord, socket = Socket} = SrvState,
    #cliState{backlogNum = BacklogNum, backlogSize = BacklogSize} = ClientState) ->
-   ?WARN(ServerName, "miRequest data ~p~n",[RequestContent]),
    case BacklogNum > BacklogSize of
       true ->
          ?WARN(ServerName, ":backlog full curNum:~p Total: ~p ~n", [BacklogNum, BacklogSize]),
          agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, backlog_full}),
          {ok, SrvState, ClientState};
       _ ->
-         try agNetCli:handleRequest(RequestContent, ClientState) of
+         try agNetCli:handleRequest(RequestContent, Host, UserPassWord, ClientState) of
             {ok, ExtRequestId, Data, NewClientState} ->
                case gen_tcp:send(Socket, Data) of
                   ok ->
@@ -68,12 +69,14 @@ handleMsg({miRequest, FromPid, RequestContent, RequestId, Timeout},
    end;
 handleMsg({tcp, Socket, Data},
    #srvState{serverName = ServerName, socket = Socket} = SrvState,
-   CliState) ->
-   ?WARN(ServerName, "get tcp data ~p~n",[Data]),
+   #cliState{backlogNum = BacklogNum} = CliState) ->
    try agNetCli:handleData(Data, CliState) of
       {ok, Replies, NewClientState} ->
+         % io:format("IMY************************** tcp ~p~n",[Replies]),
          agAgencyUtils:agencyResponses(Replies, ServerName),
-         {ok, SrvState, NewClientState};
+         ReduceNum = erlang:length(Replies),
+         % io:format("IMY************************** ReduceNum ~p ~p~n",[BacklogNum, ReduceNum]),
+         {ok, SrvState, NewClientState#cliState{backlogNum = BacklogNum - ReduceNum}};
       {error, Reason, NewClientState} ->
          ?WARN(ServerName, "handle tcp data error: ~p~n", [Reason]),
          gen_tcp:close(Socket),
@@ -111,11 +114,11 @@ handleMsg(?miDoNetConnect,
    #srvState{poolName = PoolName, serverName = ServerName, reconnectState = ReconnectState, socketOpts = SocketOptions} = SrvState,
    CliState) ->
    case ?agBeamPool:get(PoolName) of
-      #poolOpts{hostname = HostName, port = Port} ->
+      #poolOpts{hostname = HostName, port = Port, host = Host, userPassword = UserPassword} ->
          case dealConnect(ServerName, HostName, Port, SocketOptions) of
             {ok, Socket} ->
                NewReconnectState = agAgencyUtils:resetReconnectState(ReconnectState),
-               {ok, SrvState#srvState{reconnectState = NewReconnectState, socket = Socket}, CliState#cliState{binPatterns = agHttpProtocol:binPatterns()}};
+               {ok, SrvState#srvState{userPassWord = UserPassword, host = Host, reconnectState = NewReconnectState, socket = Socket}, CliState#cliState{binPatterns = agHttpProtocol:binPatterns()}};
             {error, _Reason} ->
                reconnectTimer(SrvState, CliState)
          end;

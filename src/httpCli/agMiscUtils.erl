@@ -21,7 +21,7 @@ parseUrl(_) ->
    {error, invalid_url}.
 
 parseUrl(Protocol, Rest) ->
-   {Host, Path} =
+   {Host, _Path} =
       case binary:split(Rest, <<"/">>, [trim]) of
          [UrlHost] ->
             {UrlHost, <<"/">>};
@@ -41,7 +41,7 @@ parseUrl(Protocol, Rest) ->
          [UrlHostname, UrlPort] ->
             {UrlHostname, binary_to_integer(UrlPort)}
       end,
-   #poolOpts{host = Host, path = Path, port = Port, hostname = binary_to_list(Hostname), protocol = Protocol}.
+   #poolOpts{host = Host, port = Port, hostname = binary_to_list(Hostname), protocol = Protocol}.
 
 getListValue(Key, List, Default) ->
    case lists:keyfind(Key, 1, List) of

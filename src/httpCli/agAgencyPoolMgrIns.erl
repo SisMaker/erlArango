@@ -93,11 +93,11 @@ delaStop(PoolName) ->
 
 poolOpts(Options) ->
    BaseUrl = ?GET_FROM_LIST(baseUrl, Options, ?DEFAULT_BASE_URL),
-   User = ?GET_FROM_LIST(user, Options, ?DEFAULT_BASE_URL),
-   Password = ?GET_FROM_LIST(password, Options, ?DEFAULT_BASE_URL),
+   UserPassword = ?GET_FROM_LIST(user, Options, ?USER_PASSWORD),
    PoolSize = ?GET_FROM_LIST(poolSize, Options, ?DEFAULT_POOL_SIZE),
    PoolOpts = agMiscUtils:parseUrl(BaseUrl),
-   PoolOpts#poolOpts{user = User, password = Password, poolSize = PoolSize}.
+   UserPasswordBase64 = <<"Basic ", (base64:encode(UserPassword))/binary>>,
+   PoolOpts#poolOpts{userPassword = UserPasswordBase64, poolSize = PoolSize}.
 
 
 agencyName(PoolName, Index) ->
