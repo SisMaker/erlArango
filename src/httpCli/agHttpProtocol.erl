@@ -107,14 +107,14 @@ formatHeaders(Headers) ->
 
 
 parseChunks(Data, BinPatterns) ->
-   parse_chunks(Data, BinPatterns, []).
+   parseChunks(Data, BinPatterns, []).
 
-parse_chunks(Data, BinPatterns, Acc) ->
+parseChunks(Data, BinPatterns, Acc) ->
    case parseChunk(Data, BinPatterns) of
       {ok, <<>>, Rest} ->
          {ok, iolist_to_binary(lists:reverse(Acc)), Rest};
       {ok, Body, Rest} ->
-         parse_chunks(Rest, BinPatterns, [Body | Acc]);
+         parseChunks(Rest, BinPatterns, [Body | Acc]);
       {error, Reason} ->
          {error, Reason}
    end.

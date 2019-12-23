@@ -46,11 +46,11 @@ agencyResponses([], _ServerName) ->
 
 -spec agencyReply(undefined | pid(), requestId(), undefined | reference(), term()) -> ok.
 agencyReply(undefined, _RequestId, TimerRef, _Reply) ->
-   erlang:cancel_timer(TimerRef),
+   agAgencyUtils:cancelTimer(TimerRef),
    ok;
 agencyReply(FormPid, RequestId, TimerRef, Reply) ->
-   erlang:cancel_timer(TimerRef),
-   FormPid ! #miAgHttpCliRet{requestId = RequestId, reply = Reply},
+   agAgencyUtils:cancelTimer(TimerRef),
+   catch FormPid ! #miAgHttpCliRet{requestId = RequestId, reply = Reply},
    ok.
 
 -spec agencyReplyAll(term()) -> ok.
@@ -77,7 +77,7 @@ cancelTimer(TimerRef) ->
          ok
    end.
 
--spec initReconnectState(clientOpts()) -> reconnectState() | undefined.
+-spec initReconnectState(agencyOpts()) -> reconnectState() | undefined.
 initReconnectState(Options) ->
    IsReconnect = ?GET_FROM_LIST(reconnect, Options, ?DEFAULT_IS_RECONNECT),
    case IsReconnect of

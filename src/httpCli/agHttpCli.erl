@@ -29,6 +29,7 @@
    , startPool/2
    , startPool/3
    , stopPool/1
+   , start/0
 
 ]).
 
@@ -124,7 +125,7 @@ castAgency(PoolName, RequestContent, Pid, Timeout) ->
          {error, undefined_server};
       AgencyName ->
          RequestId = {AgencyName, make_ref()},
-         catch AgencyName ! {miRequest, RequestContent, Pid, RequestId, Timeout},
+         catch AgencyName ! {miRequest, Pid, RequestContent, RequestId, Timeout},
          {ok, RequestId}
    end.
 
@@ -135,16 +136,18 @@ receiveResponse(RequestId) ->
          Reply
    end.
 
--spec startPool(poolName(), clientOpts()) -> ok | {error, pool_name_used}.
-startPool(PoolName, ClientOpts) ->
-   agAgencyPoolMgrIns:startPool(PoolName, ClientOpts, []).
+-spec startPool(poolName(), poolCfgs()) -> ok | {error, pool_name_used}.
+startPool(PoolName, PoolCfgs) ->
+   agAgencyPoolMgrIns:startPool(PoolName, PoolCfgs, []).
 
--spec startPool(poolName(), clientOpts(), poolOpts()) -> ok | {error, pool_name_used}.
-startPool(PoolName, ClientOpts, PoolOpts) ->
-   agAgencyPoolMgrIns:startPool(PoolName, ClientOpts, PoolOpts).
-
+-spec startPool(poolName(), poolCfgs(), agencyOpts()) -> ok | {error, pool_name_used}.
+startPool(PoolName, PoolCfgs, AgencyOpts) ->
+   agAgencyPoolMgrIns:startPool(PoolName, PoolCfgs, AgencyOpts).
 
 -spec stopPool(poolName()) -> ok | {error, pool_not_started}.
 stopPool(PoolName) ->
    agAgencyPoolMgrIns:stopPool(PoolName).
 
+start() ->
+   application:start(erlArango),
+   agHttpCli:startPool(tp, []).

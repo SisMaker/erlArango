@@ -12,7 +12,7 @@
    , randomElement/1
 ]).
 
--spec parseUrl(binary()) -> dbUrl() | {error, invalid_url}.
+-spec parseUrl(binary()) -> poolOpts() | {error, invalid_url}.
 parseUrl(<<"http://", Rest/binary>>) ->
    parseUrl(tcp, Rest);
 parseUrl(<<"https://", Rest/binary>>) ->
@@ -41,7 +41,7 @@ parseUrl(Protocol, Rest) ->
          [UrlHostname, UrlPort] ->
             {UrlHostname, binary_to_integer(UrlPort)}
       end,
-   #dbUrl{host = Host, path = Path, port = Port, hostname = Hostname, protocol = Protocol}.
+   #poolOpts{host = Host, path = Path, port = Port, hostname = binary_to_list(Hostname), protocol = Protocol}.
 
 getListValue(Key, List, Default) ->
    case lists:keyfind(Key, 1, List) of

@@ -16,6 +16,7 @@ handleRequest({Method, Host, Path, Headers, Body}, #cliState{requestsOut = Reque
 
 -spec handleData(binary(), cliState()) -> {ok, [{pos_integer(), term()}], cliState()} | {error, atom(), cliState()}.
 handleData(Data, #cliState{binPatterns = BinPatterns, buffer = Buffer, requestsIn = RequestsIn, response = Response} = CliState) ->
+   ?WARN(handledata, "get tcp data ~p ~n ~p~n",[Buffer, Data]),
    NewData = <<Buffer/binary, Data/binary>>,
    case responses(NewData, RequestsIn, Response, BinPatterns, []) of
       {ok, NewRequestsIn, NewResponse, Responses, Rest} ->
