@@ -30,7 +30,7 @@ binPatterns() ->
 request(Method, Host, Path, Headers, undefined) ->
    [
       Method, <<" ">>, Path, <<" HTTP/1.1\r\nHost: ">>, Host,
-      <<"\r\nConnection: Keep-alive\r\nUser-Agent: erlArango\r\n">>,
+      <<"\r\nConnection: Keep-Alive\r\nUser-Agent: erlArango\r\n">>,
       spellHeaders(Headers), <<"\r\n">>
    ];
 request(Method, Host, Path, Headers, Body) ->
@@ -39,7 +39,7 @@ request(Method, Host, Path, Headers, Body) ->
    [
       Method, <<" ">>, Path,
       <<" HTTP/1.1\r\nHost: ">>, Host,
-      <<"\r\nConnection: Keep-alive\r\nUser-Agent: erlArango\r\n">>,
+      <<"\r\nConnection: Keep-Alive\r\nUser-Agent: erlArango\r\n">>,
       spellHeaders(NewHeaders), <<"\r\n">>, Body
    ].
 
