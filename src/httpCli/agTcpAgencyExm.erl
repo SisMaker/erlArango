@@ -5,12 +5,12 @@
 
 -export([
    %% 内部行为API
-   start_link/3,
-   init_it/3,
-   system_code_change/4,
-   system_continue/3,
-   system_get_state/1,
-   system_terminate/4
+   start_link/3
+   , init_it/3
+   , system_code_change/4
+   , system_continue/3
+   , system_get_state/1
+   , system_terminate/4
 ]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  start %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

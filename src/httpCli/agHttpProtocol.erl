@@ -5,11 +5,11 @@
 -compile({inline_size, 512}).
 
 -export([
-   binPatterns/0,
-   headers/1,
-   request/5,
-   response/1,
-   response/3
+   headers/1
+   , request/5
+   , response/1
+   , response/3
+   , binPatterns/0
 ]).
 
 -record(binPatterns, {
@@ -26,16 +26,12 @@ binPatterns() ->
       rnrn = binary:compile_pattern(<<"\r\n\r\n">>)
    }.
 
--spec headers(requestRet()) -> {ok, headers()} | {error, invalid_headers}.
-headers(#requestRet{headers = Headers}) ->
-   parseHeaders(Headers, []).
-
 -spec request(method(), host(), path(), headers(), body()) -> iolist().
 request(Method, Host, Path, Headers, undefined) ->
    [
       Method, <<" ">>, Path, <<" HTTP/1.1\r\nHost: ">>, Host,
       <<"\r\nConnection: Keep-alive\r\nUser-Agent: erlArango\r\n">>,
-      formatHeaders(Headers), <<"\r\n">>
+      spellHeaders(Headers), <<"\r\n">>
    ];
 request(Method, Host, Path, Headers, Body) ->
    ContentLength = integer_to_binary(iolist_size(Body)),
@@ -44,7 +40,7 @@ request(Method, Host, Path, Headers, Body) ->
       Method, <<" ">>, Path,
       <<" HTTP/1.1\r\nHost: ">>, Host,
       <<"\r\nConnection: Keep-alive\r\nUser-Agent: erlArango\r\n">>,
-      formatHeaders(NewHeaders), <<"\r\n">>, Body
+      spellHeaders(NewHeaders), <<"\r\n">>, Body
    ].
 
 -spec response(binary()) -> {ok, requestRet(), binary()} | error().
@@ -57,29 +53,43 @@ response(Data, undefined, BinPatterns) ->
       {StatusCode, Reason, Rest} ->
          case splitHeaders(Rest, BinPatterns) of
             {undefined, Headers, Rest2} ->
-               {ok, #requestRet{state = done, status_code = StatusCode, reason = Reason, headers = Headers, content_length = undefined}, Rest2};
+               {ok, #requestRet{state = done, statusCode = StatusCode, reason = Reason, headers = Headers, contentLength = undefined}, Rest2};
             {0, Headers, Rest2} ->
-               {ok, #requestRet{state = done, status_code = StatusCode, reason = Reason, headers = Headers, content_length = 0}, Rest2};
+               {ok, #requestRet{state = done, statusCode = StatusCode, reason = Reason, headers = Headers, contentLength = 0}, Rest2};
             {ContentLength, Headers, Rest2} ->
-               response(Rest2, #requestRet{state = body, status_code = StatusCode, reason = Reason, headers = Headers, content_length = ContentLength}, BinPatterns);
+               response(Rest2, #requestRet{state = body, statusCode = StatusCode, reason = Reason, headers = Headers, contentLength = ContentLength}, BinPatterns);
             {error, Reason2} ->
                {error, Reason2}
          end;
       {error, Reason} ->
          {error, Reason}
    end;
-response(Data, #requestRet{state = body, content_length = chunked} = Response, BinPatterns) ->
-   case parseChunks(Data, BinPatterns) of
+response(Data, #requestRet{state = body, contentLength = chunked} = Response, BinPatterns) ->
+   case parseChunks(Data, BinPatterns, []) of
       {ok, Body, Rest} ->
          {ok, Response#requestRet{state = done, body = Body}, Rest};
       {error, Reason} ->
          {error, Reason}
    end;
-response(Data, #requestRet{state = body, content_length = ContentLength} = Response, _BinPatterns) when size(Data) >= ContentLength ->
+response(Data, #requestRet{state = body, contentLength = ContentLength} = Response, _BinPatterns) when size(Data) >= ContentLength ->
    <<Body:ContentLength/binary, Rest/binary>> = Data,
    {ok, Response#requestRet{state = done, body = Body}, Rest};
 response(Data, #requestRet{state = body} = Response, _BinPatterns) ->
    {ok, Response, Data}.
+
+
+spellHeaders(Headers) ->
+   [[Key, <<": ">>, Value, <<"\r\n">>] || {Key, Value} <- Headers].
+
+splitHeaders(Data, #binPatterns{rn = Rn, rnrn = Rnrn}) ->
+   case binary:split(Data, Rnrn) of
+      [Data] ->
+         {error, not_enough_data};
+      [Headers, Rest] ->
+         Headers2 = binarySplitGlobal(Headers, Rn),
+         ContentLength = contentLength(Headers2),
+         {ContentLength, Headers2, Rest}
+   end.
 
 binarySplitGlobal(Bin, Pattern) ->
    case binary:split(Bin, Pattern) of
@@ -102,13 +112,6 @@ contentLength([<<"transfer-encoding: chunked">> | _T]) ->
 contentLength([_ | T]) ->
    contentLength(T).
 
-formatHeaders(Headers) ->
-   [[Key, <<": ">>, Value, <<"\r\n">>] || {Key, Value} <- Headers].
-
-
-parseChunks(Data, BinPatterns) ->
-   parseChunks(Data, BinPatterns, []).
-
 parseChunks(Data, BinPatterns, Acc) ->
    case parseChunk(Data, BinPatterns) of
       {ok, <<>>, Rest} ->
@@ -122,17 +125,17 @@ parseChunks(Data, BinPatterns, Acc) ->
 parseChunk(Data, #binPatterns{rn = Rn}) ->
    case binary:split(Data, Rn) of
       [Size, Rest] ->
-         case parse_chunk_size(Size) of
+         case parseChunkSize(Size) of
             undefined ->
                {error, invalid_chunk_size};
             Size2 ->
-               parse_chunk_body(Rest, Size2)
+               parseChunkBody(Rest, Size2)
          end;
       [Data] ->
          {error, not_enough_data}
    end.
 
-parse_chunk_body(Data, Size) ->
+parseChunkBody(Data, Size) ->
    case Data of
       <<Body:Size/binary, "\r\n", Rest/binary>> ->
          {ok, Body, Rest};
@@ -140,13 +143,17 @@ parse_chunk_body(Data, Size) ->
          {error, not_enough_data}
    end.
 
-parse_chunk_size(Bin) ->
+parseChunkSize(Bin) ->
    try
       binary_to_integer(Bin, 16)
    catch
       error:badarg ->
          undefined
    end.
+
+-spec headers(requestRet()) -> {ok, headers()} | {error, invalid_headers}.
+headers(#requestRet{headers = Headers}) ->
+   parseHeaders(Headers, []).
 
 parseHeaders([], Acc) ->
    {ok, lists:reverse(Acc)};
@@ -193,20 +200,9 @@ parseStatusReason(<<"HTTP/1.1 ", N1, N2, N3, " ", Reason/bits>>)
    when $0 =< N1, N1 =< $9,
    $0 =< N2, N2 =< $9,
    $0 =< N3, N3 =< $9 ->
-
    StatusCode = (N1 - $0) * 100 + (N2 - $0) * 10 + (N3 - $0),
    {ok, StatusCode, Reason};
 parseStatusReason(<<"HTTP/1.0 ", _/binary>>) ->
    {error, unsupported_feature};
 parseStatusReason(_) ->
    {error, bad_request}.
-
-splitHeaders(Data, #binPatterns{rn = Rn, rnrn = Rnrn}) ->
-   case binary:split(Data, Rnrn) of
-      [Data] ->
-         {error, not_enough_data};
-      [Headers, Rest] ->
-         Headers2 = binarySplitGlobal(Headers, Rn),
-         ContentLength = contentLength(Headers2),
-         {ContentLength, Headers2, Rest}
-   end.

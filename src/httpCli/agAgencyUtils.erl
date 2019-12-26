@@ -6,44 +6,35 @@
 -compile({inline_size, 512}).
 
 -export([
-   getQueue/1,
-   addQueue/4,
-   delQueue/1,
-   clearQueue/0,
-   cancelTimer/1,
-   agencyReply/4,
-   agencyReplyAll/1,
-   agencyResponses/2,
-   initReconnectState/1,
-   resetReconnectState/1,
-   updateReconnectState/1
+   getQueue/1
+   , addQueue/2
+   , delQueue/1
+   , clearQueue/0
+   , cancelTimer/1
+   , agencyReply/4
+   , agencyReplyAll/1
+   , agencyResponse/2
+   , initReconnectState/1
+   , resetReconnectState/1
+   , updateReconnectState/1
+   , handleData/2
 ]).
 
-getQueue(ExtRequestId) ->
-   erlang:get(ExtRequestId).
+getQueue(RequestsIn) ->
+   erlang:get(RequestsIn).
 
-addQueue(ExtRequestId, FormPid, RequestId, TimerRef) ->
-   erlang:put(ExtRequestId, {FormPid, RequestId, TimerRef}).
+addQueue(RequestsIn, MiRequest) ->
+   erlang:put(RequestsIn, MiRequest).
 
-delQueue(ExtRequestId) ->
-   erlang:erase(ExtRequestId).
+delQueue(RequestsIn) ->
+   erlang:erase(RequestsIn).
 
 clearQueue() ->
    erlang:erase().
 
--spec agencyResponses([response()], serverName()) -> ok.
-agencyResponses([{ExtRequestId, Reply} | T], ServerName) ->
-   case agAgencyUtils:delQueue(ExtRequestId) of
-      {FormPid, RequestId, TimerRef} ->
-         % io:format("IMY**************************agencyResponses ~p ~p ~n",[FormPid, Reply]),
-         agencyReply(FormPid, RequestId, TimerRef, Reply);
-      _ ->
-         ?WARN(ServerName, " agencyResponses not found ExtRequestId ~p~n", [ExtRequestId]),
-         ok
-   end,
-   agencyResponses(T, ServerName);
-agencyResponses([], _ServerName) ->
-   ok.
+-spec agencyResponse(requestRet(), term()) -> ok.
+agencyResponse(Reply, {PidForm, RequestId, TimerRef}) ->
+      agencyReply(PidForm, RequestId, TimerRef, Reply).
 
 -spec agencyReply(undefined | pid(), requestId(), undefined | reference(), term()) -> ok.
 agencyReply(undefined, _RequestId, TimerRef, _Reply) ->
@@ -57,7 +48,7 @@ agencyReply(FormPid, RequestId, TimerRef, Reply) ->
 -spec agencyReplyAll(term()) -> ok.
 agencyReplyAll(Reply) ->
    AllList = agAgencyUtils:clearQueue(),
-   [agencyReply(FormPid, RequestId, TimerRef, Reply) || {FormPid, RequestId, TimerRef} <- AllList],
+   [agencyReply(FormPid, RequestId, undefined, Reply) || {miRequest, FormPid, _Method, _Path, _Headers, _Body, RequestId, _Timeout} <- AllList],
    ok.
 
 -spec cancelTimer(undefined | reference()) -> ok.
@@ -103,3 +94,28 @@ minCur(A, B) when B >= A ->
    A;
 minCur(_, B) ->
    B.
+
+-spec handleData(binary(), cliState()) -> {ok, term(), cliState()} | {error, atom(), cliState()}.
+handleData(Data, #cliState{binPatterns = BinPatterns, buffer = Buffer, temResponseRet = TemResponseRet} = CliState) ->
+   NewData = <<Buffer/binary, Data/binary>>,
+   case responses(NewData, BinPatterns, TemResponseRet) of
+      {ok, ResponseRet, NewTemResponseRet, Rest} ->
+         {ok, ResponseRet, CliState#cliState{buffer = Rest, temResponseRet = NewTemResponseRet}};
+      {error, Reason} ->
+         {error, Reason, CliState}
+   end.
+
+responses(<<>>,  _BinPatterns, TemResponseRet) ->
+   {ok, waiting_data, TemResponseRet, <<>>};
+responses(Data, BinPatterns, TemResponseRet) ->
+   case agHttpProtocol:response(Data, TemResponseRet, BinPatterns) of
+      {ok, #requestRet{state = done} = NewTemResponseRet, Rest} ->
+         {ok, NewTemResponseRet, undefined, Rest};
+      {ok, NewTemResponseRet, Rest} ->
+         {ok, waiting_data, NewTemResponseRet, Rest};
+      {error, not_enough_data} ->
+         {ok, waiting_data, TemResponseRet, Data};
+      {error, _Reason} = Err ->
+         Err
+   end.
+

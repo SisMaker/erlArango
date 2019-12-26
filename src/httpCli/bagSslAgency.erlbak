@@ -146,7 +146,7 @@ handle_msg({Request, #cast {
         socket = Socket
     } = State, ClientState}) ->
 
-    try agNetCli:handleRequest(Request, ClientState) of
+    try agAgencyUtils:handleRequest(Request, ClientState) of
         {ok, ExtRequestId, Data, ClientState2} ->
             case ssl:send(Socket, Data) of
                 ok ->
@@ -174,7 +174,7 @@ handle_msg({ssl, Socket, Data}, {#state {
         socket = Socket
     } = State, ClientState}) ->
 
-    try agNetCli:handleData(Data, ClientState) of
+    try agAgencyUtils:handleData(Data, ClientState) of
         {ok, Replies, ClientState2} ->
             agAgencyUtils:agencyResponses(Replies, Name),
             {ok, {State, ClientState2}};
@@ -254,7 +254,7 @@ terminate(_Reason, {#state {
     }, ClientState}) ->
 
     agAgencyUtils:cancel_timer(TimerRef),
-    try agNetCli:terminate(ClientState)
+    try agAgencyUtils:terminate(ClientState)
     catch
         ?EXCEPTION(E, R, Stacktrace) ->
             ?WARN(PoolName, "terminate crash: ~p:~p~n~p~n",
@@ -292,7 +292,7 @@ reconnect(#state {
         poolName = PoolName
     } = State, ClientState) ->
 
-    try agNetCli:terminate(ClientState)
+    try agAgencyUtils:terminate(ClientState)
     catch
         ?EXCEPTION(E, R, Stacktrace) ->
             ?WARN(PoolName, "terminate crash: ~p:~p~n~p~n",

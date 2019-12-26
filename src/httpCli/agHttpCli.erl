@@ -118,7 +118,7 @@ castAgency(PoolName, Request, Pid) ->
    castAgency(PoolName, Request, Pid, ?DEFAULT_TIMEOUT).
 
 -spec castAgency(poolName(), term(), pid(), timeout()) -> {ok, requestId()} | {error, atom()}.
-castAgency(PoolName, RequestContent, Pid, Timeout) ->
+castAgency(PoolName, {Method, Path, Headers, Body}, Pid, Timeout) ->
    case agAgencyPoolMgrIns:getOneAgency(PoolName) of
       {error, pool_not_found} = Error ->
          Error;
@@ -126,7 +126,8 @@ castAgency(PoolName, RequestContent, Pid, Timeout) ->
          {error, undefined_server};
       AgencyName ->
          RequestId = {AgencyName, make_ref()},
-         catch AgencyName ! {miRequest, Pid, RequestContent, RequestId, Timeout},
+         OverTime = case Timeout == infinity of true -> infinity; _ -> erlang:system_time(millisecond) + Timeout end,
+         catch AgencyName ! {miRequest, Pid, Method, Path, Headers, Body, RequestId, OverTime},
          {ok, RequestId}
    end.
 
@@ -134,7 +135,7 @@ castAgency(PoolName, RequestContent, Pid, Timeout) ->
 receiveResponse(RequestId) ->
    receive
       #miAgHttpCliRet{requestId = RequestId, reply = Reply} ->
-         % io:format("IMY************************ miAgHttpCliRet ~p ~n", [ok]),
+         io:format("IMY************************ miAgHttpCliRet ~p ~p ~n", [ok, erlang:get(cnt)]),
          Reply
       after 5000 ->
          timeout

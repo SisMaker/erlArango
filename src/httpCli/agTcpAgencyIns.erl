@@ -6,9 +6,9 @@
 
 -export([
    %% 内部行为API
-   init/1,
-   handleMsg/3,
-   terminate/3
+   init/1
+   , handleMsg/3
+   , terminate/3
 ]).
 
 -record(srvState, {
@@ -18,7 +18,6 @@
    host :: binary(),
    reconnectState :: undefined | reconnectState(),
    socket :: undefined | inet:socket(),
-   socketOpts :: [gen_tcp:connect_option()],
    timerRef :: undefined | reference()
 }).
 
@@ -26,57 +25,67 @@
 
 -spec init(term()) -> no_return().
 init({PoolName, AgencyName, AgencyOpts}) ->
-   SocketOptions = ?GET_FROM_LIST(socketOpts, AgencyOpts, ?DEFAULT_SOCKET_OPTS),
    BacklogSize = ?GET_FROM_LIST(backlogSize, AgencyOpts, ?DEFAULT_BACKLOG_SIZE),
    ReconnectState = agAgencyUtils:initReconnectState(AgencyOpts),
    self() ! ?miDoNetConnect,
-   {ok, #srvState{poolName = PoolName, serverName = AgencyName, reconnectState = ReconnectState, socketOpts = SocketOptions}, #cliState{backlogSize = BacklogSize}}.
+   {ok, #srvState{poolName = PoolName, serverName = AgencyName, reconnectState = ReconnectState}, #cliState{backlogSize = BacklogSize}}.
 
 -spec handleMsg(term(), srvState(), cliState()) -> {ok, term(), term()}.
-handleMsg({miRequest, FromPid, _RequestContent, RequestId, _Timeout},
+handleMsg({miRequest, FromPid, _Method, _Path, _Headers, _Body, RequestId, _OverTime},
    #srvState{socket = undefined} = SrvState,
    CliState) ->
    agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, no_socket}),
    {ok, SrvState, CliState};
-handleMsg({miRequest, FromPid, RequestContent, RequestId, Timeout},
+handleMsg({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime} = MiRequest,
    #srvState{serverName = ServerName, host = Host, userPassWord = UserPassWord, socket = Socket} = SrvState,
-   #cliState{backlogNum = BacklogNum, backlogSize = BacklogSize} = ClientState) ->
+   #cliState{backlogNum = BacklogNum, backlogSize = BacklogSize, requestsIn = RequestsIn, status = Status} = CliState) ->
    case BacklogNum > BacklogSize of
       true ->
          ?WARN(ServerName, ":backlog full curNum:~p Total: ~p ~n", [BacklogNum, BacklogSize]),
          agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, backlog_full}),
-         {ok, SrvState, ClientState};
+         {ok, SrvState, CliState};
       _ ->
-         try agNetCli:handleRequest(RequestContent, Host, UserPassWord, ClientState) of
-            {ok, ExtRequestId, Data, NewClientState} ->
-               case gen_tcp:send(Socket, Data) of
+         case Status of
+            leisure -> %% 空闲模式
+               Request = agHttpProtocol:request(Method, Host, Path, [{<<"Authorization">>, UserPassWord} | Headers], Body),
+               case gen_tcp:send(Socket, Request) of
                   ok ->
-                     TimerRef = erlang:start_timer(Timeout, self(), ExtRequestId),
-                     agAgencyUtils:addQueue(ExtRequestId, FromPid, RequestId, TimerRef),
-                     {ok, SrvState, NewClientState#cliState{backlogNum = BacklogNum + 1}};
+                     TimerRef =
+                        case OverTime of
+                           infinity ->
+                              undefined;
+                           _ ->
+                              erlang:start_timer(OverTime, self(), waiting, [{abs, true}])
+                        end,
+                     {ok, SrvState, CliState#cliState{status = waiting, curInfo = {FromPid, RequestId, TimerRef}}};
                   {error, Reason} ->
                      ?WARN(ServerName, ":send error: ~p~n", [Reason]),
                      gen_tcp:close(Socket),
                      agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socket_send_error}),
-                     dealClose(SrvState, NewClientState, {error, socket_send_error})
-               end
-         catch
-            E:R:S ->
-               ?WARN(ServerName, ":miRequest crash: ~p:~p~n~p~n", [E, R, S]),
-               agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, agency_crash}),
-               {ok, SrvState, ClientState}
+                     dealClose(SrvState, CliState, {error, socket_send_error})
+               end;
+            _ ->
+               agAgencyUtils:addQueue(RequestsIn, MiRequest),
+               {ok, SrvState, CliState#cliState{requestsIn = RequestsIn + 1, backlogNum = BacklogNum + 1}}
          end
    end;
 handleMsg({tcp, Socket, Data},
    #srvState{serverName = ServerName, socket = Socket} = SrvState,
-   #cliState{backlogNum = BacklogNum} = CliState) ->
-   try agNetCli:handleData(Data, CliState) of
-      {ok, Replies, NewClientState} ->
+   #cliState{backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut} = CliState) ->
+   % io:format("IMY**************************get  http ~p~n",[Data]),
+   try agAgencyUtils:handleData(Data, CliState) of
+      {ok, waiting_data, NewClientState} ->
+         {ok, SrvState, NewClientState};
+      {ok, RequestRet, NewClientState} ->
          % io:format("IMY************************** tcp ~p~n",[Replies]),
-         agAgencyUtils:agencyResponses(Replies, ServerName),
-         ReduceNum = erlang:length(Replies),
+         agAgencyUtils:agencyResponse(RequestRet, CurInfo),
          % io:format("IMY************************** ReduceNum ~p ~p~n",[BacklogNum, ReduceNum]),
-         {ok, SrvState, NewClientState#cliState{backlogNum = BacklogNum - ReduceNum}};
+         case agAgencyUtils:getQueue(RequestsOut + 1) of
+            undefined ->
+               {ok, SrvState, NewClientState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined}};
+            MiRequest ->
+               dealQueueRequest(MiRequest, SrvState, NewClientState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined})
+         end;
       {error, Reason, NewClientState} ->
          ?WARN(ServerName, "handle tcp data error: ~p~n", [Reason]),
          gen_tcp:close(Socket),
@@ -87,17 +96,17 @@ handleMsg({tcp, Socket, Data},
          gen_tcp:close(Socket),
          dealClose(SrvState, CliState, {{error, agency_handledata_error}})
    end;
-handleMsg({timeout, _TimerRef, ExtRequestId},
-   #srvState{serverName = ServerName} = SrvState,
-   CliState) ->
-   case agAgencyUtils:delQueue(ExtRequestId) of
-      {FormPid, RequestId, _TimerRef} ->
-         agAgencyUtils:agencyReply(FormPid, RequestId, undefined, {error, timeout});
+handleMsg({timeout, TimerRef, waiting},
+   SrvState,
+   #cliState{requestsOut = RequestsOut, curInfo = {FromPid, RequestId, TimerRef}} = CliState) ->
+   agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),
+   %% TODO 这里需要调整
+   case agAgencyUtils:getQueue(RequestsOut + 1) of
       undefined ->
-         ?WARN(ServerName, "timeout not found ExtRequestId ~p~n", [ExtRequestId]),
-         ok
-   end,
-   {ok, SrvState, CliState};
+         {ok, SrvState, CliState#cliState{status = leisure, curInfo = undefined}};
+      MiRequest ->
+         dealQueueRequest(MiRequest, SrvState, CliState#cliState{status = leisure, curInfo = undefined})
+   end;
 handleMsg({tcp_closed, Socket},
    #srvState{socket = Socket, serverName = ServerName} = SrvState,
    CliState) ->
@@ -111,11 +120,11 @@ handleMsg({tcp_error, Socket, Reason},
    gen_tcp:close(Socket),
    dealClose(SrvState, CliState, {error, tcp_error});
 handleMsg(?miDoNetConnect,
-   #srvState{poolName = PoolName, serverName = ServerName, reconnectState = ReconnectState, socketOpts = SocketOptions} = SrvState,
+   #srvState{poolName = PoolName, serverName = ServerName, reconnectState = ReconnectState} = SrvState,
    CliState) ->
    case ?agBeamPool:get(PoolName) of
       #poolOpts{hostname = HostName, port = Port, host = Host, userPassword = UserPassword} ->
-         case dealConnect(ServerName, HostName, Port, SocketOptions) of
+         case dealConnect(ServerName, HostName, Port, ?DEFAULT_SOCKET_OPTS) of
             {ok, Socket} ->
                NewReconnectState = agAgencyUtils:resetReconnectState(ReconnectState),
                {ok, SrvState#srvState{userPassWord = UserPassword, host = Host, reconnectState = NewReconnectState, socket = Socket}, CliState#cliState{binPatterns = agHttpProtocol:binPatterns()}};
@@ -164,3 +173,38 @@ reconnectTimer(#srvState{reconnectState = ReconnectState} = SrvState, CliState) 
    #reconnectState{current = Current} = MewReconnectState = agAgencyUtils:updateReconnectState(ReconnectState),
    TimerRef = erlang:send_after(Current, self(), ?miDoNetConnect),
    {ok, SrvState#srvState{reconnectState = MewReconnectState, socket = undefined, timerRef = TimerRef}, CliState}.
+
+
+dealQueueRequest({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime},
+   #srvState{serverName = ServerName, host = Host, userPassWord = UserPassWord, socket = Socket} = SrvState,
+   #cliState{requestsOut = RequestsOut} = CliState) ->
+   agAgencyUtils:delQueue(RequestsOut + 1),
+   case erlang:system_time(millisecond) > OverTime of
+      true ->
+         %% 超时了
+         case agAgencyUtils:getQueue(RequestsOut + 2) of
+            undefined ->
+               {ok, SrvState, CliState#cliState{status = waiting, requestsOut = RequestsOut + 1}};
+            MiRequest ->
+               dealQueueRequest(MiRequest, SrvState, CliState#cliState{requestsOut = RequestsOut + 1})
+         end;
+      _ ->
+         Request = agHttpProtocol:request(Method, Host, Path, [{<<"Authorization">>, UserPassWord} | Headers], Body),
+         case gen_tcp:send(Socket, Request) of
+            ok ->
+               TimerRef =
+                  case OverTime of
+                     infinity ->
+                        undefined;
+                     _ ->
+                        erlang:start_timer(OverTime, self(), waiting, [{abs, true}])
+                  end,
+               {ok, SrvState, CliState#cliState{status = waiting, requestsOut = RequestsOut + 1, curInfo = {FromPid, RequestId, TimerRef}}};
+            {error, Reason} ->
+               ?WARN(ServerName, ":send error: ~p~n", [Reason]),
+               gen_tcp:close(Socket),
+               agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socket_send_error}),
+               dealClose(SrvState, CliState, {error, socket_send_error})
+         end
+   end.
+

@@ -14,7 +14,7 @@
 -define(DEFAULT_IS_RECONNECT, true).
 -define(DEFAULT_RECONNECT_MAX, 120000).
 -define(DEFAULT_RECONNECT_MIN, 500).
--define(DEFAULT_SOCKET_OPTS, [binary, {packet, line}, {packet, raw}, {send_timeout, 50}, {send_timeout_close, true}]).
+-define(DEFAULT_SOCKET_OPTS, [binary, {active, true}, {delay_send, true}, {nodelay, true}, {keepalive, true}, {recbuf, 1048576}, {send_timeout, 5000}, {send_timeout_close, true}]).
 -define(DEFAULT_TIMEOUT, 5000).
 -define(DEFAULT_BODY, undefined).
 -define(DEFAULT_HEADERS, []).
@@ -45,10 +45,10 @@
 -record(requestRet, {
    state :: body | done,
    body :: undefined | binary(),
-   content_length :: undefined | non_neg_integer() | chunked,
+   contentLength :: undefined | non_neg_integer() | chunked,
    headers :: undefined | [binary()],
    reason :: undefined | binary(),
-   status_code :: undefined | 100..505
+   statusCode :: undefined | 100..505
 }).
 
 -record(httpParam, {
@@ -65,13 +65,16 @@
 }).
 
 -record(cliState, {
-   requestsIn = 0 :: non_neg_integer(),
+   requestsIn = 1 :: non_neg_integer(),
    requestsOut = 0 :: non_neg_integer(),
+   status = leisure :: waiting | leisure,
    binPatterns :: tuple(),
    buffer = <<>> :: binary(),
-   response :: requestRet() | undefined,
-   backlogNum = 0 :: integer(),
-   backlogSize :: integer()
+   temResponseRet :: requestRet() | undefined,
+   backlogNum = 1 :: integer(),
+   backlogSize = 1 :: integer(),
+   curInfo = {undefined, undefined, undefined} :: tuple()
+
 }).
 
 -record(poolOpts, {
