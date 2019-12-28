@@ -11,13 +11,12 @@
    , delQueue/1
    , clearQueue/0
    , cancelTimer/1
+   , agencyReply/2
    , agencyReply/4
    , agencyReplyAll/1
-   , agencyResponse/2
    , initReconnectState/1
    , resetReconnectState/1
    , updateReconnectState/1
-   , handleData/2
 ]).
 
 getQueue(RequestsIn) ->
@@ -32,10 +31,14 @@ delQueue(RequestsIn) ->
 clearQueue() ->
    erlang:erase().
 
--spec agencyResponse(recvState(), term()) -> ok.
-agencyResponse(Reply, {PidForm, RequestId, TimerRef}) ->
-   agencyReply(PidForm, RequestId, TimerRef, Reply);
-agencyResponse(RequestRet, undefined) ->
+-spec agencyReply(term(), term()) -> ok.
+agencyReply({undefined, _RequestId, TimerRef}, _Reply) ->
+   agAgencyUtils:cancelTimer(TimerRef);
+agencyReply({PidForm, RequestId, TimerRef}, Reply) ->
+   agAgencyUtils:cancelTimer(TimerRef),
+   catch PidForm ! #miAgHttpCliRet{requestId = RequestId, reply = Reply},
+   ok;
+agencyReply(undefined, RequestRet) ->
    ?WARN(not_curInfo ,"not find curInfo ret is:~p~n ",[RequestRet]),
    ok.
 
@@ -97,37 +100,4 @@ minCur(A, B) when B >= A ->
    A;
 minCur(_, B) ->
    B.
-
--spec handleData(recvState() | undefined, binary(), binPatterns()) -> {ok, term(), cliState()} | {error, atom(), cliState()}.
-handleData(undeined, BinPatterns, Data) ->
-   case responses(NewData, BinPatterns, TemResponseRet) of
-      {ok, ResponseRet, NewTemResponseRet, Rest} ->
-         io:format("IMY************************handleData ~p~n",[Rest]),
-         {ok, ResponseRet, CliState#cliState{buffer = Rest, recvState = NewTemResponseRet}};
-      {error, Reason} ->
-         {error, Reason, CliState}
-   end;
-handleData(RecvState, BinPatterns, Data) ->
-   NewData = <<Buffer/binary, Data/binary>>,
-   case responses(NewData, BinPatterns, TemResponseRet) of
-      {ok, ResponseRet, NewTemResponseRet, Rest} ->
-         io:format("IMY************************handleData ~p~n",[Rest]),
-         {ok, ResponseRet, CliState#cliState{buffer = Rest, recvState = NewTemResponseRet}};
-      {error, Reason} ->
-         {error, Reason, CliState}
-   end.
-
-responses(<<>>,  _BinPatterns, TemResponseRet) ->
-   {ok, waiting_data, TemResponseRet, <<>>};
-responses(Data, BinPatterns, TemResponseRet) ->
-   case agHttpProtocol:response(Data, TemResponseRet, BinPatterns) of
-      {ok, #recvState{stage = done} = NewTemResponseRet, Rest} ->
-         {ok, NewTemResponseRet, undefined, Rest};
-      {ok, NewTemResponseRet, Rest} ->
-         {ok, waiting_data, NewTemResponseRet, Rest};
-      {error, not_enough_data} ->
-         {ok, waiting_data, TemResponseRet, Data};
-      {error, _Reason} = Err ->
-         Err
-   end.
 

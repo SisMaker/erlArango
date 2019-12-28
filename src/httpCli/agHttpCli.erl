@@ -103,7 +103,7 @@ callAgency(PoolName, Request) ->
 callAgency(PoolName, Request, Timeout) ->
    case castAgency(PoolName, Request, self(), Timeout) of
       {ok, RequestId} ->
-         % io:format("IMY************************ todo receiveResponse ~p ~n", [RequestId]),
+          %io:format("IMY************************ todo receiveResponse ~p ~n", [RequestId]),
          receiveResponse(RequestId);
       {error, Reason} ->
          {error, Reason}
@@ -135,7 +135,7 @@ castAgency(PoolName, {Method, Path, Headers, Body}, Pid, Timeout) ->
 receiveResponse(RequestId) ->
    receive
       #miAgHttpCliRet{requestId = RequestId, reply = Reply} ->
-         %io:format("IMY************************ miAgHttpCliRet ~p ~p ~n", [ok, erlang:get(cnt)]),
+         %io:format("IMY************************ miAgHttpCliRet ~p ~p ~n", [erlang:get(cnt), Reply]),
          Reply
       after 5000 ->
          timeout

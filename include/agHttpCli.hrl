@@ -42,22 +42,20 @@
    timestamp :: erlang:timestamp()
 }).
 
--record(requestRet1, {
-   state :: body | done,
-   body :: undefined | binary(),
+-record(requestRet, {
+   statusCode :: undefined | 100..505,
    contentLength :: undefined | non_neg_integer() | chunked,
-   headers :: undefined | [binary()],
-   reason :: undefined | binary(),
-   statusCode :: undefined | 100..505
+   body :: undefined | binary()
 }).
 
 -record(recvState, {
+   stage = header  :: header | body | done,                    %% 一个请求收到tcp可能会有多个包 最多分三个阶接收
+   contentLength :: undefined | non_neg_integer() | chunked,
    statusCode :: undefined | 100..505,
    reason :: undefined | binary(),
    headers :: undefined | [binary()],
-   contentLength :: undefined | non_neg_integer() | chunked,
-   stage = header  :: header | body | done,                    %% 一个请求收到tcp可能会有多个包 最多分三个阶接收
-   body :: undefined | binary()
+   buffer = <<>> :: binary(),
+   body = <<>> :: binary()
 }).
 
 -record(httpParam, {
@@ -74,7 +72,6 @@
 }).
 
 -record(cliState, {
-   binPatterns :: tuple(),
    requestsIn = 1 :: non_neg_integer(),
    requestsOut = 0 :: non_neg_integer(),
    status = leisure :: waiting | leisure,
@@ -82,7 +79,6 @@
    backlogSize = 0 :: integer(),
    curInfo = undefined :: tuple(),
    recvState :: recvState() | undefined
-
 }).
 
 -record(poolOpts, {
@@ -102,6 +98,7 @@
 -type binPatterns() :: #binPatterns {}.
 -type miAgHttpCliRet() :: #miAgHttpCliRet{}.
 -type request() :: #request{}.
+-type requestRet() :: #requestRet{}.
 -type recvState() :: #recvState{}.
 -type httpParam() :: #httpParam{}.
 -type cliState() :: #cliState{}.

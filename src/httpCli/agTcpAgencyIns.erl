@@ -16,6 +16,8 @@
    serverName :: serverName(),
    userPassWord :: binary(),
    host :: binary(),
+   rn :: binary:cp(),
+   rnrn :: binary:cp(),
    reconnectState :: undefined | reconnectState(),
    socket :: undefined | inet:socket(),
    timerRef :: undefined | reference()
@@ -28,7 +30,7 @@ init({PoolName, AgencyName, AgencyOpts}) ->
    BacklogSize = ?GET_FROM_LIST(backlogSize, AgencyOpts, ?DEFAULT_BACKLOG_SIZE),
    ReconnectState = agAgencyUtils:initReconnectState(AgencyOpts),
    self() ! ?miDoNetConnect,
-   {ok, #srvState{poolName = PoolName, serverName = AgencyName, reconnectState = ReconnectState}, #cliState{backlogSize = BacklogSize}}.
+   {ok, #srvState{poolName = PoolName, serverName = AgencyName, rn = binary:compile_pattern(<<"\r\n">>), rnrn = binary:compile_pattern(<<"\r\n\r\n">>), reconnectState = ReconnectState}, #cliState{backlogSize = BacklogSize}}.
 
 -spec handleMsg(term(), srvState(), cliState()) -> {ok, term(), term()}.
 handleMsg({miRequest, FromPid, _Method, _Path, _Headers, _Body, RequestId, _OverTime},
@@ -70,23 +72,23 @@ handleMsg({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime}
          end
    end;
 handleMsg({tcp, Socket, Data},
-   #srvState{serverName = ServerName, socket = Socket} = SrvState,
-   #cliState{binPatterns = BinPatterns, backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
-   try agAgencyUtils:handleData(Data, BinPatterns, RecvState) of
-      {ok, waiting_data, NewClientState} ->
-         {ok, SrvState, NewClientState};
-      {ok, RequestRet, NewClientState} ->
-         agAgencyUtils:agencyResponse(RequestRet, CurInfo),
+   #srvState{serverName = ServerName, rn = Rn, rnrn = RnRn, socket = Socket} = SrvState,
+   #cliState{backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
+   try agHttpProtocol:response(RecvState, Rn, RnRn, Data) of
+      {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, body = Body}} ->
+         agAgencyUtils:agencyReply(CurInfo, #requestRet{statusCode = StatusCode, contentLength = ContentLength, body = Body}),
          case agAgencyUtils:getQueue(RequestsOut + 1) of
             undefined ->
-               {ok, SrvState, NewClientState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined}};
+               {ok, SrvState, CliState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined, recvState = undefined}};
             MiRequest ->
-               dealQueueRequest(MiRequest, SrvState, NewClientState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined})
+               dealQueueRequest(MiRequest, SrvState, CliState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined, recvState = undefined})
          end;
-      {error, Reason, NewClientState} ->
+      {ok, NewRecvState} ->
+         {ok, SrvState, CliState#cliState{recvState = NewRecvState}};
+      {error, Reason} ->
          ?WARN(ServerName, "handle tcp data error: ~p~n", [Reason]),
          gen_tcp:close(Socket),
-         dealClose(SrvState, NewClientState, {error, tcp_data_error})
+         dealClose(SrvState, CliState, {error, tcp_data_error})
    catch
       E:R:S ->
          ?WARN(ServerName, "handle tcp data crash: ~p:~p~n~p~n", [E, R, S]),
@@ -123,7 +125,7 @@ handleMsg(?miDoNetConnect,
             {ok, Socket} ->
                NewReconnectState = agAgencyUtils:resetReconnectState(ReconnectState),
                %% 新建连接之后 需要重置之前的buff之类状态数据
-               NewCliState = CliState#cliState{binPatterns = agHttpProtocol:binPatterns(), buffer = <<>>, status = leisure, recvState = undefined, curInfo = undefined},
+               NewCliState = CliState#cliState{status = leisure, recvState = undefined, curInfo = undefined},
                case agAgencyUtils:getQueue(RequestsOut + 1) of
                   undefined ->
                      {ok, SrvState#srvState{userPassWord = UserPassword, host = Host, reconnectState = NewReconnectState, socket = Socket}, NewCliState};
