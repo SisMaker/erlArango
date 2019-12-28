@@ -32,9 +32,12 @@ delQueue(RequestsIn) ->
 clearQueue() ->
    erlang:erase().
 
--spec agencyResponse(requestRet(), term()) -> ok.
+-spec agencyResponse(recvState(), term()) -> ok.
 agencyResponse(Reply, {PidForm, RequestId, TimerRef}) ->
-      agencyReply(PidForm, RequestId, TimerRef, Reply).
+   agencyReply(PidForm, RequestId, TimerRef, Reply);
+agencyResponse(RequestRet, undefined) ->
+   ?WARN(not_curInfo ,"not find curInfo ret is:~p~n ",[RequestRet]),
+   ok.
 
 -spec agencyReply(undefined | pid(), requestId(), undefined | reference(), term()) -> ok.
 agencyReply(undefined, _RequestId, TimerRef, _Reply) ->
@@ -95,12 +98,21 @@ minCur(A, B) when B >= A ->
 minCur(_, B) ->
    B.
 
--spec handleData(binary(), cliState()) -> {ok, term(), cliState()} | {error, atom(), cliState()}.
-handleData(Data, #cliState{binPatterns = BinPatterns, buffer = Buffer, temResponseRet = TemResponseRet} = CliState) ->
+-spec handleData(recvState() | undefined, binary(), binPatterns()) -> {ok, term(), cliState()} | {error, atom(), cliState()}.
+handleData(undeined, BinPatterns, Data) ->
+   case responses(NewData, BinPatterns, TemResponseRet) of
+      {ok, ResponseRet, NewTemResponseRet, Rest} ->
+         io:format("IMY************************handleData ~p~n",[Rest]),
+         {ok, ResponseRet, CliState#cliState{buffer = Rest, recvState = NewTemResponseRet}};
+      {error, Reason} ->
+         {error, Reason, CliState}
+   end;
+handleData(RecvState, BinPatterns, Data) ->
    NewData = <<Buffer/binary, Data/binary>>,
    case responses(NewData, BinPatterns, TemResponseRet) of
       {ok, ResponseRet, NewTemResponseRet, Rest} ->
-         {ok, ResponseRet, CliState#cliState{buffer = Rest, temResponseRet = NewTemResponseRet}};
+         io:format("IMY************************handleData ~p~n",[Rest]),
+         {ok, ResponseRet, CliState#cliState{buffer = Rest, recvState = NewTemResponseRet}};
       {error, Reason} ->
          {error, Reason, CliState}
    end.
@@ -109,7 +121,7 @@ responses(<<>>,  _BinPatterns, TemResponseRet) ->
    {ok, waiting_data, TemResponseRet, <<>>};
 responses(Data, BinPatterns, TemResponseRet) ->
    case agHttpProtocol:response(Data, TemResponseRet, BinPatterns) of
-      {ok, #requestRet{state = done} = NewTemResponseRet, Rest} ->
+      {ok, #recvState{stage = done} = NewTemResponseRet, Rest} ->
          {ok, NewTemResponseRet, undefined, Rest};
       {ok, NewTemResponseRet, Rest} ->
          {ok, waiting_data, NewTemResponseRet, Rest};

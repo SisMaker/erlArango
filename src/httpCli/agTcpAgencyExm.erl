@@ -4,7 +4,6 @@
 -compile({inline_size, 512}).
 
 -export([
-   %% 内部行为API
    start_link/3
    , init_it/3
    , system_code_change/4
@@ -13,7 +12,7 @@
    , system_terminate/4
 ]).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  start %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genExm  start %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 -spec start_link(module(), term(), [proc_lib:spawn_option()]) -> {ok, pid()}.
 start_link(ServerName, Args, SpawnOpts) ->
    proc_lib:start_link(?MODULE, init_it, [ServerName, self(), Args], infinity, SpawnOpts).
@@ -75,4 +74,4 @@ terminate(Reason, SrvState, CliState) ->
    agTcpAgencyIns:terminate(Reason, SrvState, CliState),
    exit(Reason).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  end %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genExm  end %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

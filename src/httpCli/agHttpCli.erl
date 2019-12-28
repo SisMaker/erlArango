@@ -33,27 +33,27 @@
 
 ]).
 
--spec syncGet(dbUrl(), headers(), body()) -> {ok, requestRet()} | error().
+-spec syncGet(dbUrl(), headers(), body()) -> {ok, recvState()} | error().
 syncGet(Url, Headers, Body) ->
    syncRequest(<<"GET">>, Url, Headers, Body, ?DEFAULT_TIMEOUT).
 
--spec syncGet(dbUrl(), headers(), body(), timeout()) -> {ok, requestRet()} | error().
+-spec syncGet(dbUrl(), headers(), body(), timeout()) -> {ok, recvState()} | error().
 syncGet(Url, Headers, Body, Timeout) ->
    syncRequest(<<"GET">>, Url, Headers, Body, Timeout).
 
--spec syncPost(dbUrl(), headers(), body()) -> {ok, requestRet()} | error().
+-spec syncPost(dbUrl(), headers(), body()) -> {ok, recvState()} | error().
 syncPost(Url, Headers, Body) ->
    syncRequest(<<"POST">>, Url, Headers, Body, ?DEFAULT_TIMEOUT).
 
--spec syncPost(dbUrl(), headers(), body(), timeout()) -> {ok, requestRet()} | error().
+-spec syncPost(dbUrl(), headers(), body(), timeout()) -> {ok, recvState()} | error().
 syncPost(Url, Headers, Body, Timeout) ->
    syncRequest(<<"POST">>, Url, Headers, Body, Timeout).
 
--spec syncPut(dbUrl(), headers(), body()) -> {ok, requestRet()} | error().
+-spec syncPut(dbUrl(), headers(), body()) -> {ok, recvState()} | error().
 syncPut(Url, Headers, Body) ->
    syncRequest(<<"PUT">>, Url, Headers, Body, ?DEFAULT_TIMEOUT).
 
--spec syncPut(dbUrl(), headers(), body(), timeout()) -> {ok, requestRet()} | error().
+-spec syncPut(dbUrl(), headers(), body(), timeout()) -> {ok, recvState()} | error().
 syncPut(Url, Headers, Body, Timeout) ->
    syncRequest(<<"PUT">>, Url, Headers, Body, Timeout).
 
@@ -61,7 +61,7 @@ syncPut(Url, Headers, Body, Timeout) ->
 %% syncCustom(Verb, Url, Headers, Body) ->
 %%    syncRequest({custom, Verb}, Url, Headers, Body).
 
--spec syncRequest(method(), dbUrl(), headers(), body(), timeout()) -> {ok, requestRet()} | error().
+-spec syncRequest(method(), dbUrl(), headers(), body(), timeout()) -> {ok, recvState()} | error().
 syncRequest(Method, #dbUrl{
    host = Host,
    path = Path,
@@ -135,7 +135,7 @@ castAgency(PoolName, {Method, Path, Headers, Body}, Pid, Timeout) ->
 receiveResponse(RequestId) ->
    receive
       #miAgHttpCliRet{requestId = RequestId, reply = Reply} ->
-         io:format("IMY************************ miAgHttpCliRet ~p ~p ~n", [ok, erlang:get(cnt)]),
+         %io:format("IMY************************ miAgHttpCliRet ~p ~p ~n", [ok, erlang:get(cnt)]),
          Reply
       after 5000 ->
          timeout

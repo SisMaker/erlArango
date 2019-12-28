@@ -3,14 +3,13 @@
 -export([
    start_link/3
    , init_it/3
-   , loop/2
    , system_code_change/4
    , system_continue/3
    , system_get_state/1
    , system_terminate/4
 ]).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  start %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genExm  start %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 -spec start_link(module(), term(), [proc_lib:spawn_option()]) -> {ok, pid()}.
 start_link(Name, Args, SpawnOpts) ->
    proc_lib:start_link(?MODULE, init_it, [Name, self(), Args], infinity, SpawnOpts).
@@ -24,14 +23,13 @@ init_it(Name, Parent, Args) ->
          proc_lib:init_ack(Parent, {error, {already_started, Pid}})
    end.
 
-%% sys callbacks
 -spec system_code_change(term(), module(), undefined | term(), term()) -> {ok, term()}.
 system_code_change(State, _Module, _OldVsn, _Extra) ->
    {ok, State}.
 
 -spec system_continue(pid(), [], {module(), atom(), pid(), term()}) -> ok.
 system_continue(_Parent, _Debug, {Parent, State}) ->
-   ?MODULE:loop(Parent, State).
+   loop(Parent, State).
 
 -spec system_get_state(term()) -> {ok, term()}.
 system_get_state(State) ->
@@ -72,6 +70,6 @@ loop(Parent, State) ->
 terminate(Reason, State) ->
    agAgencyPoolMgrIns:terminate(Reason, State),
    exit(Reason).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genActor  end %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genExm  end %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 

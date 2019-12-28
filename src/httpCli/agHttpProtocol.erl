@@ -12,13 +12,6 @@
    , binPatterns/0
 ]).
 
--record(binPatterns, {
-   rn :: binary:cp(),
-   rnrn :: binary:cp()
-}).
-
--type binPatterns() :: #binPatterns {}.
-
 -spec binPatterns() -> binPatterns().
 binPatterns() ->
    #binPatterns{
@@ -26,6 +19,7 @@ binPatterns() ->
       rnrn = binary:compile_pattern(<<"\r\n\r\n">>)
    }.
 
+%% <<"Content-Type: application/json; charset=utf-8">>,
 -spec request(method(), host(), path(), headers(), body()) -> iolist().
 request(Method, Host, Path, Headers, undefined) ->
    [
@@ -43,38 +37,38 @@ request(Method, Host, Path, Headers, Body) ->
       spellHeaders(NewHeaders), <<"\r\n">>, Body
    ].
 
--spec response(binary()) -> {ok, requestRet(), binary()} | error().
+-spec response(binary()) -> {ok, recvState(), binary()} | error().
 response(Data) ->
    response(Data, undefined, binPatterns()).
 
--spec response(binary(), undefined | requestRet(), binPatterns()) -> {ok, requestRet(), binary()} | error().
+-spec response(binary(), undefined | recvState(), binPatterns()) -> {ok, recvState(), binary()} | error().
 response(Data, undefined, BinPatterns) ->
    case parseStatusLine(Data, BinPatterns) of
       {StatusCode, Reason, Rest} ->
          case splitHeaders(Rest, BinPatterns) of
             {undefined, Headers, Rest2} ->
-               {ok, #requestRet{state = done, statusCode = StatusCode, reason = Reason, headers = Headers, contentLength = undefined}, Rest2};
+               {ok, #recvState{stage = done, statusCode = StatusCode, reason = Reason, headers = Headers, contentLength = undefined}, Rest2};
             {0, Headers, Rest2} ->
-               {ok, #requestRet{state = done, statusCode = StatusCode, reason = Reason, headers = Headers, contentLength = 0}, Rest2};
+               {ok, #recvState{stage = done, statusCode = StatusCode, reason = Reason, headers = Headers, contentLength = 0}, Rest2};
             {ContentLength, Headers, Rest2} ->
-               response(Rest2, #requestRet{state = body, statusCode = StatusCode, reason = Reason, headers = Headers, contentLength = ContentLength}, BinPatterns);
+               response(Rest2, #recvState{stage = body, statusCode = StatusCode, reason = Reason, headers = Headers, contentLength = ContentLength}, BinPatterns);
             {error, Reason2} ->
                {error, Reason2}
          end;
       {error, Reason} ->
          {error, Reason}
    end;
-response(Data, #requestRet{state = body, contentLength = chunked} = Response, BinPatterns) ->
+response(Data, #recvState{stage = body, contentLength = chunked} = Response, BinPatterns) ->
    case parseChunks(Data, BinPatterns, []) of
       {ok, Body, Rest} ->
-         {ok, Response#requestRet{state = done, body = Body}, Rest};
+         {ok, Response#recvState{stage = done, body = Body}, Rest};
       {error, Reason} ->
          {error, Reason}
    end;
-response(Data, #requestRet{state = body, contentLength = ContentLength} = Response, _BinPatterns) when size(Data) >= ContentLength ->
+response(Data, #recvState{stage = body, contentLength = ContentLength} = Response, _BinPatterns) when size(Data) >= ContentLength ->
    <<Body:ContentLength/binary, Rest/binary>> = Data,
-   {ok, Response#requestRet{state = done, body = Body}, Rest};
-response(Data, #requestRet{state = body} = Response, _BinPatterns) ->
+   {ok, Response#recvState{stage = done, body = Body}, Rest};
+response(Data, #recvState{stage = body} = Response, _BinPatterns) ->
    {ok, Response, Data}.
 
 
@@ -151,8 +145,8 @@ parseChunkSize(Bin) ->
          undefined
    end.
 
--spec headers(requestRet()) -> {ok, headers()} | {error, invalid_headers}.
-headers(#requestRet{headers = Headers}) ->
+-spec headers(recvState()) -> {ok, headers()} | {error, invalid_headers}.
+headers(#recvState{headers = Headers}) ->
    parseHeaders(Headers, []).
 
 parseHeaders([], Acc) ->
