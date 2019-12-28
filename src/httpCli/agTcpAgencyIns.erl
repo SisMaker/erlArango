@@ -39,7 +39,7 @@ handleMsg({miRequest, FromPid, _Method, _Path, _Headers, _Body, RequestId, _Over
 handleMsg({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime} = MiRequest,
    #srvState{serverName = ServerName, host = Host, userPassWord = UserPassWord, socket = Socket} = SrvState,
    #cliState{backlogNum = BacklogNum, backlogSize = BacklogSize, requestsIn = RequestsIn, status = Status} = CliState) ->
-   case BacklogNum > BacklogSize of
+   case BacklogNum >= BacklogSize of
       true ->
          ?WARN(ServerName, ":backlog full curNum:~p Total: ~p ~n", [BacklogNum, BacklogSize]),
          agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, backlog_full}),
@@ -57,7 +57,7 @@ handleMsg({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime}
                            _ ->
                               erlang:start_timer(OverTime, self(), waiting, [{abs, true}])
                         end,
-                     {ok, SrvState, CliState#cliState{status = waiting, curInfo = {FromPid, RequestId, TimerRef}}};
+                     {ok, SrvState, CliState#cliState{status = waiting, backlogNum = BacklogNum + 1, curInfo = {FromPid, RequestId, TimerRef}}};
                   {error, Reason} ->
                      ?WARN(ServerName, ":send error: ~p~n", [Reason]),
                      gen_tcp:close(Socket),
@@ -71,15 +71,12 @@ handleMsg({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime}
    end;
 handleMsg({tcp, Socket, Data},
    #srvState{serverName = ServerName, socket = Socket} = SrvState,
-   #cliState{backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut} = CliState) ->
-   % io:format("IMY**************************get  http ~p~n",[Data]),
-   try agAgencyUtils:handleData(Data, CliState) of
+   #cliState{binPatterns = BinPatterns, backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
+   try agAgencyUtils:handleData(Data, BinPatterns, RecvState) of
       {ok, waiting_data, NewClientState} ->
          {ok, SrvState, NewClientState};
       {ok, RequestRet, NewClientState} ->
-         % io:format("IMY************************** tcp ~p~n",[Replies]),
          agAgencyUtils:agencyResponse(RequestRet, CurInfo),
-         % io:format("IMY************************** ReduceNum ~p ~p~n",[BacklogNum, ReduceNum]),
          case agAgencyUtils:getQueue(RequestsOut + 1) of
             undefined ->
                {ok, SrvState, NewClientState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined}};
@@ -97,16 +94,14 @@ handleMsg({tcp, Socket, Data},
          dealClose(SrvState, CliState, {{error, agency_handledata_error}})
    end;
 handleMsg({timeout, TimerRef, waiting},
-   SrvState,
-   #cliState{requestsOut = RequestsOut, curInfo = {FromPid, RequestId, TimerRef}} = CliState) ->
+   #srvState{socket = Socket} = SrvState,
+   #cliState{backlogNum = BacklogNum, curInfo = {FromPid, RequestId, TimerRef}} = CliState) ->
    agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),
-   %% TODO 这里需要调整
-   case agAgencyUtils:getQueue(RequestsOut + 1) of
-      undefined ->
-         {ok, SrvState, CliState#cliState{status = leisure, curInfo = undefined}};
-      MiRequest ->
-         dealQueueRequest(MiRequest, SrvState, CliState#cliState{status = leisure, curInfo = undefined})
-   end;
+   %% 之前的数据超时之后 要关闭tcp 然后重新建立连接 以免后面该tcp收到该次超时数据 影响后面请求的接收数据 导致数据错乱
+   gen_tcp:close(Socket),
+   timer:sleep(1000),
+   self() ! ?miDoNetConnect,
+   {ok, SrvState, CliState#cliState{backlogNum = BacklogNum - 1}};
 handleMsg({tcp_closed, Socket},
    #srvState{socket = Socket, serverName = ServerName} = SrvState,
    CliState) ->
@@ -121,13 +116,20 @@ handleMsg({tcp_error, Socket, Reason},
    dealClose(SrvState, CliState, {error, tcp_error});
 handleMsg(?miDoNetConnect,
    #srvState{poolName = PoolName, serverName = ServerName, reconnectState = ReconnectState} = SrvState,
-   CliState) ->
+   #cliState{requestsOut = RequestsOut} = CliState) ->
    case ?agBeamPool:get(PoolName) of
       #poolOpts{hostname = HostName, port = Port, host = Host, userPassword = UserPassword} ->
          case dealConnect(ServerName, HostName, Port, ?DEFAULT_SOCKET_OPTS) of
             {ok, Socket} ->
                NewReconnectState = agAgencyUtils:resetReconnectState(ReconnectState),
-               {ok, SrvState#srvState{userPassWord = UserPassword, host = Host, reconnectState = NewReconnectState, socket = Socket}, CliState#cliState{binPatterns = agHttpProtocol:binPatterns()}};
+               %% 新建连接之后 需要重置之前的buff之类状态数据
+               NewCliState = CliState#cliState{binPatterns = agHttpProtocol:binPatterns(), buffer = <<>>, status = leisure, recvState = undefined, curInfo = undefined},
+               case agAgencyUtils:getQueue(RequestsOut + 1) of
+                  undefined ->
+                     {ok, SrvState#srvState{userPassWord = UserPassword, host = Host, reconnectState = NewReconnectState, socket = Socket}, NewCliState};
+                  MiRequest ->
+                     dealQueueRequest(MiRequest, SrvState#srvState{socket = Socket}, NewCliState)
+               end;
             {error, _Reason} ->
                reconnectTimer(SrvState, CliState)
          end;
@@ -150,8 +152,7 @@ dealConnect(ServerName, HostName, Port, SocketOptions) ->
    case inet:getaddrs(HostName, inet) of
       {ok, IPList} ->
          Ip = agMiscUtils:randomElement(IPList),
-         case gen_tcp:connect(Ip, Port, SocketOptions,
-            ?DEFAULT_CONNECT_TIMEOUT) of
+         case gen_tcp:connect(Ip, Port, SocketOptions, ?DEFAULT_CONNECT_TIMEOUT) of
             {ok, Socket} ->
                {ok, Socket};
             {error, Reason} ->

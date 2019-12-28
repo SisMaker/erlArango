@@ -9,6 +9,7 @@
    , stopPool/1
    , getOneAgency/1
 
+   %% genExm API
    , init/1
    , handleMsg/2
    , terminate/2
@@ -17,7 +18,6 @@
 %% k-v缓存表
 -define(ETS_AG_Pool, ets_ag_Pool).
 -define(ETS_AG_Agency, ets_ag_Agency).
--record(state, {}).
 
 -spec init(Args :: term()) -> ok.
 init(_Args) ->
@@ -25,7 +25,7 @@ init(_Args) ->
    ets:new(?ETS_AG_Agency, [named_table, set, protected]),
    agKvsToBeam:load(?agBeamPool, []),
    agKvsToBeam:load(?agBeamAgency, []),
-   {ok, #state{}}.
+   {ok, undefined}.
 
 handleMsg({'$gen_call', From, {startPool, PoolName, PoolCfgs, AgencyOpts}}, State) ->
    dealStart(PoolName, PoolCfgs, AgencyOpts),
@@ -115,7 +115,7 @@ agencyMod(_) ->
 
 agencySpec(ServerMod, ServerName, Args) ->
    %% TODO 下面spawn_opt 参数需要调优
-   StartFunc = {ServerMod, start_link, [ServerName, Args, [{min_heap_size, 5000},{min_bin_vheap_size, 100000},{fullsweep_after, 500}]]},
+   StartFunc = {ServerMod, start_link, [ServerName, Args, [{min_heap_size, 5000}, {min_bin_vheap_size, 100000}, {fullsweep_after, 500}]]},
    {ServerName, StartFunc, transient, 5000, worker, [ServerMod]}.
 
 -spec startChildren(atom(), protocol(), poolSize(), agencyOpts()) -> ok.
