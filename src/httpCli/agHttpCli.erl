@@ -2,7 +2,7 @@
 -include("agHttpCli.hrl").
 
 -compile(inline).
--compile({inline_size, 512}).
+-compile({inline_size, 128}).
 
 -export([
    syncGet/3
@@ -135,10 +135,8 @@ castAgency(PoolName, {Method, Path, Headers, Body}, Pid, Timeout) ->
 receiveResponse(RequestId) ->
    receive
       #miAgHttpCliRet{requestId = RequestId, reply = Reply} ->
-         %io:format("IMY************************ miAgHttpCliRet ~p ~p ~n", [erlang:get(cnt), Reply]),
+         io:format("IMY************************ miAgHttpCliRet ~p ~p ~n", [111, size(element(4, Reply))]),
          Reply
-      after 5000 ->
-         timeout
    end.
 
 -spec startPool(poolName(), poolCfgs()) -> ok | {error, pool_name_used}.

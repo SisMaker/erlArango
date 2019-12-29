@@ -1,5 +1,8 @@
 -module(agKvsToBeam).
 
+-compile(inline).
+-compile({inline_size, 128}).
+
 -export([
    load/2
 ]).

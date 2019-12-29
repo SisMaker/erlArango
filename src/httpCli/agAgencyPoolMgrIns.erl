@@ -1,5 +1,8 @@
 -module(agAgencyPoolMgrIns).
 
+-compile(inline).
+-compile({inline_size, 128}).
+
 -include("agHttpCli.hrl").
 -include("erlArango.hrl").
 

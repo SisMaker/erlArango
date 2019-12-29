@@ -2,7 +2,7 @@
 -include("agHttpCli.hrl").
 
 -compile(inline).
--compile({inline_size, 512}).
+-compile({inline_size, 128}).
 
 -export([
    headers/1
@@ -88,7 +88,7 @@ response(#recvState{stage = body, contentLength = chunked, body = Body, buffer =
    end;
 response(#recvState{stage = body, contentLength = ContentLength, body = Body} = RecvState, _Rn, _RnRn, Data) ->
    CurData = <<Body/binary, Data/binary>>,
-   BodySize = erlang:size(Body),
+   BodySize = erlang:size(CurData),
    if
       BodySize == ContentLength ->
          {done, RecvState#recvState{stage = done, body = CurData}};
@@ -111,7 +111,7 @@ response(#recvState{stage = header, body = Body}, Rn, RnRn, Data) ->
                RecvState = #recvState{stage = body, contentLength = chunked, statusCode = StatusCode, reason = Reason, headers = Headers},
                response(RecvState, Rn, RnRn, Rest);
             {ContentLength, Headers, Body} ->
-               case size(Body) >= ContentLength of
+               case erlang:size(Body) >= ContentLength of
                   true ->
                      {done, #recvState{stage = done, statusCode = StatusCode, reason = Reason, headers = Headers, contentLength = ContentLength, body = Body}};
                   _ ->

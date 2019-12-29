@@ -3,7 +3,7 @@
 -include("agHttpCli.hrl").
 
 -compile(inline).
--compile({inline_size, 512}).
+-compile({inline_size, 128}).
 
 -export([
    getQueue/1

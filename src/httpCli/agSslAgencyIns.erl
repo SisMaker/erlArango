@@ -1,4 +1,4 @@
--module(agTcpAgencyIns).
+-module(agSslAgencyIns).
 -include("agHttpCli.hrl").
 
 -compile(inline).
@@ -19,7 +19,7 @@
    rn :: binary:cp(),
    rnrn :: binary:cp(),
    reconnectState :: undefined | reconnectState(),
-   socket :: undefined | inet:socket(),
+   socket :: undefined | ssl:sslsocket(),
    timerRef :: undefined | reference()
 }).
 
@@ -50,7 +50,7 @@ handleMsg({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime}
          case Status of
             leisure -> %% 空闲模式
                Request = agHttpProtocol:request(Method, Host, Path, [{<<"Authorization">>, UserPassWord} | Headers], Body),
-               case gen_tcp:send(Socket, Request) of
+               case ssl:send(Socket, Request) of
                   ok ->
                      TimerRef =
                         case OverTime of
@@ -62,7 +62,7 @@ handleMsg({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime}
                      {ok, SrvState, CliState#cliState{status = waiting, backlogNum = BacklogNum + 1, curInfo = {FromPid, RequestId, TimerRef}}};
                   {error, Reason} ->
                      ?WARN(ServerName, ":send error: ~p~n", [Reason]),
-                     gen_tcp:close(Socket),
+                     ssl:close(Socket),
                      agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socket_send_error}),
                      dealClose(SrvState, CliState, {error, socket_send_error})
                end;
@@ -71,7 +71,7 @@ handleMsg({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime}
                {ok, SrvState, CliState#cliState{requestsIn = RequestsIn + 1, backlogNum = BacklogNum + 1}}
          end
    end;
-handleMsg({tcp, Socket, Data},
+handleMsg({ssl, Socket, Data},
    #srvState{serverName = ServerName, rn = Rn, rnrn = RnRn, socket = Socket} = SrvState,
    #cliState{backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
    try agHttpProtocol:response(RecvState, Rn, RnRn, Data) of
@@ -86,36 +86,36 @@ handleMsg({tcp, Socket, Data},
       {ok, NewRecvState} ->
          {ok, SrvState, CliState#cliState{recvState = NewRecvState}};
       {error, Reason} ->
-         ?WARN(ServerName, "handle tcp data error: ~p~n", [Reason]),
-         gen_tcp:close(Socket),
-         dealClose(SrvState, CliState, {error, tcp_data_error})
+         ?WARN(ServerName, "handle ssl data error: ~p~n", [Reason]),
+         ssl:close(Socket),
+         dealClose(SrvState, CliState, {error, ssl_data_error})
    catch
       E:R:S ->
-         ?WARN(ServerName, "handle tcp data crash: ~p:~p~n~p~n", [E, R, S]),
-         gen_tcp:close(Socket),
+         ?WARN(ServerName, "handle ssl data crash: ~p:~p~n~p~n", [E, R, S]),
+         ssl:close(Socket),
          dealClose(SrvState, CliState, {{error, agency_handledata_error}})
    end;
 handleMsg({timeout, TimerRef, waiting},
    #srvState{socket = Socket} = SrvState,
    #cliState{backlogNum = BacklogNum, curInfo = {FromPid, RequestId, TimerRef}} = CliState) ->
    agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),
-   %% 之前的数据超时之后 要关闭tcp 然后重新建立连接 以免后面该tcp收到该次超时数据 影响后面请求的接收数据 导致数据错乱
-   gen_tcp:close(Socket),
+   %% 之前的数据超时之后 要关闭ssl 然后重新建立连接 以免后面该ssl收到该次超时数据 影响后面请求的接收数据 导致数据错乱
+   ssl:close(Socket),
    timer:sleep(1000),
    self() ! ?miDoNetConnect,
    {ok, SrvState, CliState#cliState{backlogNum = BacklogNum - 1}};
-handleMsg({tcp_closed, Socket},
+handleMsg({ssl_closed, Socket},
    #srvState{socket = Socket, serverName = ServerName} = SrvState,
    CliState) ->
    ?WARN(ServerName, "connection closed~n", []),
-   dealClose(SrvState, CliState, {error, tcp_closed});
-handleMsg({tcp_error, Socket, Reason},
+   dealClose(SrvState, CliState, {error, ssl_closed});
+handleMsg({ssl_error, Socket, Reason},
    #srvState{socket = Socket, serverName = ServerName} = SrvState,
    CliState) ->
 
    ?WARN(ServerName, "connection error: ~p~n", [Reason]),
-   gen_tcp:close(Socket),
-   dealClose(SrvState, CliState, {error, tcp_error});
+   ssl:close(Socket),
+   dealClose(SrvState, CliState, {error, ssl_error});
 handleMsg(?miDoNetConnect,
    #srvState{poolName = PoolName, serverName = ServerName, reconnectState = ReconnectState} = SrvState,
    #cliState{requestsOut = RequestsOut} = CliState) ->
@@ -154,7 +154,7 @@ dealConnect(ServerName, HostName, Port, SocketOptions) ->
    case inet:getaddrs(HostName, inet) of
       {ok, IPList} ->
          Ip = agMiscUtils:randomElement(IPList),
-         case gen_tcp:connect(Ip, Port, SocketOptions, ?DEFAULT_CONNECT_TIMEOUT) of
+         case ssl:connect(Ip, Port, SocketOptions, ?DEFAULT_CONNECT_TIMEOUT) of
             {ok, Socket} ->
                {ok, Socket};
             {error, Reason} ->
@@ -193,7 +193,7 @@ dealQueueRequest({miRequest, FromPid, Method, Path, Headers, Body, RequestId, Ov
          end;
       _ ->
          Request = agHttpProtocol:request(Method, Host, Path, [{<<"Authorization">>, UserPassWord} | Headers], Body),
-         case gen_tcp:send(Socket, Request) of
+         case ssl:send(Socket, Request) of
             ok ->
                TimerRef =
                   case OverTime of
@@ -205,7 +205,7 @@ dealQueueRequest({miRequest, FromPid, Method, Path, Headers, Body, RequestId, Ov
                {ok, SrvState, CliState#cliState{status = waiting, requestsOut = RequestsOut + 1, curInfo = {FromPid, RequestId, TimerRef}}};
             {error, Reason} ->
                ?WARN(ServerName, ":send error: ~p~n", [Reason]),
-               gen_tcp:close(Socket),
+               ssl:close(Socket),
                agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socket_send_error}),
                dealClose(SrvState, CliState, {error, socket_send_error})
          end

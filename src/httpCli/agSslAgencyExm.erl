@@ -1,4 +1,4 @@
--module(agTcpAgencyExm).
+-module(agSslAgencyExm).
 
 -compile(inline).
 -compile({inline_size, 128}).
@@ -50,7 +50,7 @@ safeRegister(ServerName) ->
    end.
 
 moduleInit(Parent, Args) ->
-   case agTcpAgencyIns:init(Args) of
+   case agSslAgencyIns:init(Args) of
       {ok, SrvState, CliState} ->
          proc_lib:init_ack(Parent, {ok, self()}),
          loop(Parent, SrvState, CliState);
@@ -66,12 +66,12 @@ loop(Parent, SrvState, CliState) ->
       {'EXIT', Parent, Reason} ->
          terminate(Reason, SrvState, CliState);
       Msg ->
-         {ok, NewSrvState, NewCliState} = agTcpAgencyIns:handleMsg(Msg, SrvState, CliState),
+         {ok, NewSrvState, NewCliState} = agSslAgencyIns:handleMsg(Msg, SrvState, CliState),
          loop(Parent, NewSrvState, NewCliState)
    end.
 
 terminate(Reason, SrvState, CliState) ->
-   agTcpAgencyIns:terminate(Reason, SrvState, CliState),
+   agSslAgencyIns:terminate(Reason, SrvState, CliState),
    exit(Reason).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% genExm  end %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
