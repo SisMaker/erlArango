@@ -1,5 +1,8 @@
 -module(agAgencyPoolMgrExm).
 
+-compile(inline).
+-compile({inline_size, 128}).
+
 -export([
    start_link/3
    , init_it/3

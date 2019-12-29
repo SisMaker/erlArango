@@ -1,5 +1,4 @@
 -module(agMiscUtils).
-
 -include("agHttpCli.hrl").
 
 -compile(inline).

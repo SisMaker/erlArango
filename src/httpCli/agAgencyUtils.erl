@@ -1,5 +1,4 @@
 -module(agAgencyUtils).
-
 -include("agHttpCli.hrl").
 
 -compile(inline).
