@@ -57,11 +57,11 @@ handleMsg({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime}
                            infinity ->
                               undefined;
                            _ ->
-                              erlang:start_timer(OverTime, self(), waiting, [{abs, true}])
+                              erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                         end,
                      {ok, SrvState, CliState#cliState{status = waiting, backlogNum = BacklogNum + 1, curInfo = {FromPid, RequestId, TimerRef}}};
                   {error, Reason} ->
-                     ?WARN(ServerName, ":send error: ~p~n", [Reason]),
+                     ?WARN(ServerName, ":send error: ~p ~p ~p ~n", [Reason, FromPid, RequestId]),
                      ssl:close(Socket),
                      agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socket_send_error}),
                      dealClose(SrvState, CliState, {error, socket_send_error})
@@ -86,12 +86,12 @@ handleMsg({ssl, Socket, Data},
       {ok, NewRecvState} ->
          {ok, SrvState, CliState#cliState{recvState = NewRecvState}};
       {error, Reason} ->
-         ?WARN(ServerName, "handle ssl data error: ~p~n", [Reason]),
+         ?WARN(ServerName, "handle ssl data error: ~p ~p ~n", [Reason, CurInfo]),
          ssl:close(Socket),
          dealClose(SrvState, CliState, {error, ssl_data_error})
    catch
       E:R:S ->
-         ?WARN(ServerName, "handle ssl data crash: ~p:~p~n~p~n", [E, R, S]),
+         ?WARN(ServerName, "handle ssl data crash: ~p:~p~n~p~n ~p~n ", [E, R, S, CurInfo]),
          ssl:close(Socket),
          dealClose(SrvState, CliState, {{error, agency_handledata_error}})
    end;
@@ -185,6 +185,7 @@ dealQueueRequest({miRequest, FromPid, Method, Path, Headers, Body, RequestId, Ov
    case erlang:system_time(millisecond) > OverTime of
       true ->
          %% 超时了
+         agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),
          case agAgencyUtils:getQueue(RequestsOut + 2) of
             undefined ->
                {ok, SrvState, CliState#cliState{status = waiting, requestsOut = RequestsOut + 1}};

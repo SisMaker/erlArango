@@ -21,7 +21,7 @@
 
 -spec callAgency(poolName(), method(), path(), headers(), body()) -> term() | {error, term()}.
 callAgency(PoolName, Method, Path, Headers, Body) ->
-   callAgency(PoolName, Method, Path, Headers, Body, infinity).
+   callAgency(PoolName, Method, Path, Headers, Body, ?DEFAULT_TIMEOUT).
 
 -spec callAgency(poolName(), method(), path(), headers(), body(), timeout()) -> term() | {error, atom()}.
 callAgency(PoolName, Method, Path, Headers, Body, Timeout) ->
@@ -34,7 +34,7 @@ callAgency(PoolName, Method, Path, Headers, Body, Timeout) ->
 
 -spec castAgency(poolName(), method(), path(), headers(), body()) -> {ok, requestId()} | {error, atom()}.
 castAgency(PoolName, Method, Path, Headers, Body) ->
-   castAgency(PoolName, Method, Path, Headers, Body, infinity, self()).
+   castAgency(PoolName, Method, Path, Headers, Body, ?DEFAULT_TIMEOUT, self()).
 
 -spec castAgency(poolName(), method(), path(), headers(), body(), timeout()) -> {ok, requestId()} | {error, atom()}.
 castAgency(PoolName, Method, Path, Headers, Body, Timeout) ->
@@ -58,7 +58,6 @@ castAgency(PoolName, Method, Path, Headers, Body, Timeout, Pid) ->
 receiveResponse(RequestId) ->
    receive
       #miAgHttpCliRet{requestId = RequestId, reply = Reply} ->
-         %io:format("IMY************************ miAgHttpCliRet ~p ~p ~n", [111, size(element(4, Reply))]),
          Reply
    end.
 

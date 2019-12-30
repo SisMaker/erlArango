@@ -57,11 +57,11 @@ handleMsg({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime}
                            infinity ->
                               undefined;
                            _ ->
-                              erlang:start_timer(OverTime, self(), waiting, [{abs, true}])
+                              erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                         end,
                      {ok, SrvState, CliState#cliState{status = waiting, backlogNum = BacklogNum + 1, curInfo = {FromPid, RequestId, TimerRef}}};
                   {error, Reason} ->
-                     ?WARN(ServerName, ":send error: ~p~n", [Reason]),
+                     ?WARN(ServerName, ":send error: ~p ~p ~p ~n", [Reason, FromPid, RequestId]),
                      gen_tcp:close(Socket),
                      agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socket_send_error}),
                      dealClose(SrvState, CliState, {error, socket_send_error})
@@ -86,16 +86,16 @@ handleMsg({tcp, Socket, Data},
       {ok, NewRecvState} ->
          {ok, SrvState, CliState#cliState{recvState = NewRecvState}};
       {error, Reason} ->
-         ?WARN(ServerName, "handle tcp data error: ~p~n", [Reason]),
+         ?WARN(ServerName, "handle tcp data error: ~p ~p ~n", [Reason, CurInfo]),
          gen_tcp:close(Socket),
          dealClose(SrvState, CliState, {error, tcp_data_error})
    catch
       E:R:S ->
-         ?WARN(ServerName, "handle tcp data crash: ~p:~p~n~p~n", [E, R, S]),
+         ?WARN(ServerName, "handle tcp data crash: ~p:~p~n~p~n ~p ~n ", [E, R, S, CurInfo]),
          gen_tcp:close(Socket),
          dealClose(SrvState, CliState, {{error, agency_handledata_error}})
    end;
-handleMsg({timeout, TimerRef, waiting},
+handleMsg({timeout, TimerRef, waiting_over},
    #srvState{socket = Socket} = SrvState,
    #cliState{backlogNum = BacklogNum, curInfo = {FromPid, RequestId, TimerRef}} = CliState) ->
    agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),
@@ -112,7 +112,6 @@ handleMsg({tcp_closed, Socket},
 handleMsg({tcp_error, Socket, Reason},
    #srvState{socket = Socket, serverName = ServerName} = SrvState,
    CliState) ->
-
    ?WARN(ServerName, "connection error: ~p~n", [Reason]),
    gen_tcp:close(Socket),
    dealClose(SrvState, CliState, {error, tcp_error});
@@ -130,7 +129,7 @@ handleMsg(?miDoNetConnect,
                   undefined ->
                      {ok, SrvState#srvState{userPassWord = UserPassword, host = Host, reconnectState = NewReconnectState, socket = Socket}, NewCliState};
                   MiRequest ->
-                     dealQueueRequest(MiRequest, SrvState#srvState{socket = Socket}, NewCliState)
+                     dealQueueRequest(MiRequest, SrvState#srvState{socket = Socket, reconnectState = NewReconnectState}, NewCliState)
                end;
             {error, _Reason} ->
                reconnectTimer(SrvState, CliState)
@@ -185,9 +184,10 @@ dealQueueRequest({miRequest, FromPid, Method, Path, Headers, Body, RequestId, Ov
    case erlang:system_time(millisecond) > OverTime of
       true ->
          %% 超时了
+         agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),
          case agAgencyUtils:getQueue(RequestsOut + 2) of
             undefined ->
-               {ok, SrvState, CliState#cliState{status = waiting, requestsOut = RequestsOut + 1}};
+               {ok, SrvState, CliState#cliState{requestsOut = RequestsOut + 1}};
             MiRequest ->
                dealQueueRequest(MiRequest, SrvState, CliState#cliState{requestsOut = RequestsOut + 1})
          end;
@@ -200,7 +200,7 @@ dealQueueRequest({miRequest, FromPid, Method, Path, Headers, Body, RequestId, Ov
                      infinity ->
                         undefined;
                      _ ->
-                        erlang:start_timer(OverTime, self(), waiting, [{abs, true}])
+                        erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                   end,
                {ok, SrvState, CliState#cliState{status = waiting, requestsOut = RequestsOut + 1, curInfo = {FromPid, RequestId, TimerRef}}};
             {error, Reason} ->
