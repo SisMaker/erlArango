@@ -3,6 +3,9 @@
 
 -compile([export_all, nowarn_export_all]).
 
+start() ->
+   application:start(erlArango),
+   agHttpCli:startPool(tt, [{poolSize, 100}], []).
 
 tt(C, N) ->
    application:start(erlArango),

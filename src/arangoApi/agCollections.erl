@@ -1,0 +1,4 @@
+-module(agCollections).
+
+%% API
+-export([]).
