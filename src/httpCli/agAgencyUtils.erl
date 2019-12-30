@@ -38,7 +38,7 @@ agencyReply({PidForm, RequestId, TimerRef}, Reply) ->
    catch PidForm ! #miAgHttpCliRet{requestId = RequestId, reply = Reply},
    ok;
 agencyReply(undefined, RequestRet) ->
-   ?WARN(not_curInfo ,"not find curInfo ret is:~p~n ",[RequestRet]),
+   ?WARN(not_curInfo, "not find curInfo ret is:~p~n ", [RequestRet]),
    ok.
 
 -spec agencyReply(undefined | pid(), requestId(), undefined | reference(), term()) -> ok.

@@ -59,7 +59,7 @@ response(undefined, Rn, RnRn, Data) ->
                   BodySize == ContentLength ->
                      {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
                   BodySize > ContentLength ->
-                     ?WARN(agTcpAgencyIns, "11 contentLength get to long data why? more: ~p ~n",[BodySize - ContentLength]),
+                     ?WARN(agTcpAgencyIns, "11 contentLength get to long data why? more: ~p ~n", [BodySize - ContentLength]),
                      {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
                   true ->
                      {ok, #recvState{stage = body, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}}
@@ -93,10 +93,10 @@ response(#recvState{stage = body, contentLength = ContentLength, body = Body} = 
       BodySize == ContentLength ->
          {done, RecvState#recvState{stage = done, body = CurData}};
       BodySize > ContentLength ->
-         ?WARN(agTcpAgencyIns, "22 contentLength get to long data why? more: ~p ~n",[BodySize - ContentLength]),
+         ?WARN(agTcpAgencyIns, "22 contentLength get to long data why? more: ~p ~n", [BodySize - ContentLength]),
          {done, #recvState{stage = done, body = CurData}};
       true ->
-         {ok,RecvState#recvState{body = CurData}}
+         {ok, RecvState#recvState{body = CurData}}
    end;
 response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data) ->
    CurBody = <<OldBody/binary, Data/binary>>,
@@ -116,7 +116,7 @@ response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data) ->
                   BodySize == ContentLength ->
                      {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
                   BodySize > ContentLength ->
-                     ?WARN(agTcpAgencyIns, "33 contentLength get to long data why? more: ~p ~n",[BodySize - ContentLength]),
+                     ?WARN(agTcpAgencyIns, "33 contentLength get to long data why? more: ~p ~n", [BodySize - ContentLength]),
                      {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
                   true ->
                      {ok, #recvState{stage = body, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}}

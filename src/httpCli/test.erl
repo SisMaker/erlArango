@@ -8,16 +8,16 @@ tt(C, N) ->
    application:start(erlArango),
    agHttpCli:startPool(tt, [{poolSize, 100}], []),
    Request = {<<"GET">>, <<"/_api/database/current">>, [], []},
-   io:format("IMY**********************  start time ~p~n",[erlang:system_time(millisecond)]),
+   io:format("IMY**********************  start time ~p~n", [erlang:system_time(millisecond)]),
    [spawn(test, test, [N, Request]) || _Idx <- lists:seq(1, C)].
-   %%test(N, Request).
+%%test(N, Request).
 
 %% /_api/database
 
 test(0, Request) ->
    R1 = {<<"GET">>, <<"/_api/database">>, [], []},
    agHttpCli:callAgency(tt, R1, 5000),
-   io:format("IMY**********************  test over ~p~n",[erlang:system_time(millisecond)]);
+   io:format("IMY**********************  test over ~p~n", [erlang:system_time(millisecond)]);
 test(N, Request) ->
    erlang:put(cnt, N),
    agHttpCli:callAgency(tt, Request, 5000),

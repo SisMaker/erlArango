@@ -7,8 +7,9 @@
    load/2
 ]).
 
--type key() :: atom() | binary() | float() | integer() | list() | tuple().
--type value() :: atom() | binary() | float() | integer() | list() | tuple().
+%% 注意 map类型的数据不能当做key
+-type key() :: atom() | binary() | bitstring() | float() | integer() | list() | tuple().
+-type value() :: atom() | binary() | bitstring() | float() | integer() | list() | tuple() | map().
 
 -spec load(term(), [{key(), value()}]) -> ok.
 load(Module, KVs) ->
@@ -19,19 +20,18 @@ load(Module, KVs) ->
    ok.
 
 forms(Module, KVs) ->
-   Mod = erl_syntax:attribute(erl_syntax:atom(module),
-      [erl_syntax:atom(Module)]),
-   ExportList = [erl_syntax:arity_qualifier(erl_syntax:atom(get),
-      erl_syntax:integer(1))],
-   Export = erl_syntax:attribute(erl_syntax:atom(export),
-      [erl_syntax:list(ExportList)]),
-   Function = erl_syntax:function(erl_syntax:atom(get),
-      lookup_clauses(KVs)),
+   %% -module(Module).
+   Mod = erl_syntax:attribute(erl_syntax:atom(module), [erl_syntax:atom(Module)]),
+   %% -export([get/0]).
+   ExportList = [erl_syntax:arity_qualifier(erl_syntax:atom(get), erl_syntax:integer(1))],
+   Export = erl_syntax:attribute(erl_syntax:atom(export), [erl_syntax:list(ExportList)]),
+   %% get(K) -> V
+   Function = erl_syntax:function(erl_syntax:atom(get), lookup_clauses(KVs, [])),
    [erl_syntax:revert(X) || X <- [Mod, Export, Function]].
 
 lookup_clause(Key, Value) ->
-   Var = to_syntax(Key),
-   Body = to_syntax(Value),
+   Var = erl_syntax:abstract(Key),
+   Body = erl_syntax:abstract(Value),
    erl_syntax:clause([Var], [], [Body]).
 
 lookup_clause_anon() ->
@@ -39,24 +39,7 @@ lookup_clause_anon() ->
    Body = erl_syntax:atom(undefined),
    erl_syntax:clause([Var], [], [Body]).
 
-lookup_clauses(KVs) ->
-   lookup_clauses(KVs, []).
-
 lookup_clauses([], Acc) ->
    lists:reverse(lists:flatten([lookup_clause_anon() | Acc]));
 lookup_clauses([{Key, Value} | T], Acc) ->
    lookup_clauses(T, [lookup_clause(Key, Value) | Acc]).
-
-to_syntax(Atom) when is_atom(Atom) ->
-   erl_syntax:atom(Atom);
-to_syntax(Binary) when is_binary(Binary) ->
-   String = erl_syntax:string(binary_to_list(Binary)),
-   erl_syntax:binary([erl_syntax:binary_field(String)]);
-to_syntax(Float) when is_float(Float) ->
-   erl_syntax:float(Float);
-to_syntax(Integer) when is_integer(Integer) ->
-   erl_syntax:integer(Integer);
-to_syntax(List) when is_list(List) ->
-   erl_syntax:list([to_syntax(X) || X <- List]);
-to_syntax(Tuple) when is_tuple(Tuple) ->
-   erl_syntax:tuple([to_syntax(X) || X <- tuple_to_list(Tuple)]).

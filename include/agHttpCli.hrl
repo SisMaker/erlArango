@@ -14,7 +14,7 @@
 -define(DEFAULT_IS_RECONNECT, true).
 -define(DEFAULT_RECONNECT_MAX, 120000).
 -define(DEFAULT_RECONNECT_MIN, 500).
--define(DEFAULT_TIMEOUT, 5000).
+-define(DEFAULT_TIMEOUT, infinity).
 -define(DEFAULT_BODY, undefined).
 -define(DEFAULT_HEADERS, []).
 -define(DEFAULT_PID, self()).
@@ -49,10 +49,9 @@
 }).
 
 -record(recvState, {
-   stage = header  :: header | body | done,                    %% 一个请求收到tcp可能会有多个包 最多分三个阶接收
+   stage = header :: header | body | done,                    %% 一个请求收到tcp可能会有多个包 最多分三个阶接收
    contentLength :: undefined | non_neg_integer() | chunked,
    statusCode :: undefined | 100..505,
-   reason :: undefined | binary(),
    headers :: undefined | [binary()],
    buffer = <<>> :: binary(),
    body = <<>> :: binary()
@@ -86,7 +85,7 @@
    port :: 0..65535,
    hostname :: string(),
    protocol :: protocol(),
-   poolSize ::binary(),
+   poolSize :: binary(),
    userPassword :: binary()
 }).
 
