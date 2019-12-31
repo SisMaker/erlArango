@@ -25,7 +25,6 @@
 
 -define(GET_FROM_LIST(Key, List), agMiscUtils:getListValue(Key, List, undefined)).
 -define(GET_FROM_LIST(Key, List, Default), agMiscUtils:getListValue(Key, List, Default)).
-
 -define(WARN(Tag, Format, Data), agMiscUtils:warnMsg(Tag, Format, Data)).
 
 -define(miDoNetConnect, miDoNetConnect).
@@ -57,13 +56,6 @@
    body = <<>> :: binary()
 }).
 
--record(httpParam, {
-   headers = [] :: [binary()],
-   body = undefined :: undefined | binary(),
-   pid = self() :: pid(),
-   timeout = 1000 :: non_neg_integer()
-}).
-
 -record(reconnectState, {
    min :: non_neg_integer(),
    max :: non_neg_integer() | infinity,
@@ -89,17 +81,10 @@
    userPassword :: binary()
 }).
 
--record(binPatterns, {
-   rn :: binary:cp(),
-   rnrn :: binary:cp()
-}).
-
--type binPatterns() :: #binPatterns {}.
 -type miAgHttpCliRet() :: #miAgHttpCliRet{}.
 -type request() :: #request{}.
 -type requestRet() :: #requestRet{}.
 -type recvState() :: #recvState{}.
--type httpParam() :: #httpParam{}.
 -type cliState() :: #cliState{}.
 -type reconnectState() :: #reconnectState{}.
 
@@ -136,14 +121,60 @@
 -type poolOpts() :: #poolOpts{}.
 -type agencyOpts() :: [agencyOpt()].
 
--record(dbUrl, {
-   host :: host(),
-   path :: path(),
-   port :: 0..65535,
-   hostname :: string(),
-   protocol :: protocol(),
-   poolName :: atom()               %% 请求该URL用到的poolName
-}).
-
--type dbUrl() :: #dbUrl{}.
+%% http header 头
+%% -type header() ::
+%%    'Cache-Control' |
+%%    'Connection' |
+%%    'Date' |
+%%    'Pragma'|
+%%    'Transfer-Encoding' |
+%%    'Upgrade' |
+%%    'Via' |
+%%    'Accept' |
+%%    'Accept-Charset'|
+%%    'Accept-Encoding' |
+%%    'Accept-Language' |
+%%    'Authorization' |
+%%    'From' |
+%%    'Host' |
+%%    'If-Modified-Since' |
+%%    'If-Match' |
+%%    'If-None-Match' |
+%%    'If-Range'|
+%%    'If-Unmodified-Since' |
+%%    'Max-Forwards' |
+%%    'Proxy-Authorization' |
+%%    'Range'|
+%%    'Referer' |
+%%    'User-Agent' |
+%%    'Age' |
+%%    'Location' |
+%%    'Proxy-Authenticate'|
+%%    'Public' |
+%%    'Retry-After' |
+%%    'Server' |
+%%    'Vary' |
+%%    'Warning'|
+%%    'Www-Authenticate' |
+%%    'Allow' |
+%%    'Content-Base' |
+%%    'Content-Encoding'|
+%%    'Content-Language' |
+%%    'Content-Length' |
+%%    'Content-Location'|
+%%    'Content-Md5' |
+%%    'Content-Range' |
+%%    'Content-Type' |
+%%    'Etag'|
+%%    'Expires' |
+%%    'Last-Modified' |
+%%    'Accept-Ranges' |
+%%    'Set-Cookie'|
+%%    'Set-Cookie2' |
+%%    'X-Forwarded-For' |
+%%    'Cookie' |
+%%    'Keep-Alive' |
+%%    'Proxy-Connection' |
+%%    binary() |
+%%    string().
 

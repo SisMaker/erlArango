@@ -9,15 +9,7 @@
    , request/5
    , response/1
    , response/4
-   , binPatterns/0
 ]).
-
--spec binPatterns() -> binPatterns().
-binPatterns() ->
-   #binPatterns{
-      rn = binary:compile_pattern(<<"\r\n">>),
-      rnrn = binary:compile_pattern(<<"\r\n\r\n">>)
-   }.
 
 %% <<"Content-Type: application/json; charset=utf-8">>,
 -spec request(method(), host(), path(), headers(), body()) -> iolist().
