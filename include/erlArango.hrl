@@ -2,5 +2,6 @@
 -define(agAgencyPoolMgr, agAgencyPoolMgr).
 
 -define(Get, <<"GET">>).
+-define(Put, <<"PUT">>).
 -define(Post, <<"POST">>).
 -define(Delete, <<"DELETE">>).

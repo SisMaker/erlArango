@@ -3,7 +3,6 @@
 
 -compile(export_all).
 
-
 %% 请注意，所有数据库管理操作只能通过默认数据库（_system）访问，而不能通过其他数据库访问。
 
 %% 检索有关当前数据库的信息
@@ -25,10 +24,15 @@ userVisitDbs(PoolName) ->
 %    passwd：用户密码（字符串）。如果未指定，则默认为空字符串。
 %    active：一个标志，指示是否应该激活用户帐户。默认值为true。如果设置为false，则用户将无法登录数据库。
 %    extra：带有额外用户信息的JSON对象。Extra中包含的数据 将为用户存储，但ArangoDB不会进一步解释
+
+newDb(PoolName, Name) ->
+   NameStr = jsx:encode(Name),
+   agHttpCli:callAgency(PoolName, ?Post, <<"/_api/database">>, [], [<<"{\"name\":">>, NameStr, <<"}">>], infinity).
+
 newDb(PoolName, Name, Users) ->
-   NameStr = jsx:encode(#{name => Name}),
-   UsersStr = jsx:encode(#{users => Users}),
-   agHttpCli:callAgency(PoolName, ?Post, <<"/_api/database">>, [], [NameStr, UsersStr], infinity).
+
+   BodyStr = jsx:encode(#{<<"name">> => Name, <<"users">> => Users}),
+   agHttpCli:callAgency(PoolName, ?Post, <<"/_api/database">>, [], BodyStr, infinity).
 
 %% 删除现有数据库
 %% DELETE /_api/database/{database-name}
