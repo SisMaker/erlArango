@@ -26,12 +26,12 @@ userVisitDbs(PoolName) ->
 %    extra：带有额外用户信息的JSON对象。Extra中包含的数据 将为用户存储，但ArangoDB不会进一步解释
 
 newDb(PoolName, Name) ->
-   NameStr = jsx:encode(Name),
+   NameStr = jiffy:encode(Name),
    agHttpCli:callAgency(PoolName, ?Post, <<"/_api/database">>, [], [<<"{\"name\":">>, NameStr, <<"}">>], infinity).
 
 newDb(PoolName, Name, Users) ->
 
-   BodyStr = jsx:encode(#{<<"name">> => Name, <<"users">> => Users}),
+   BodyStr = jiffy:encode(#{<<"name">> => Name, <<"users">> => Users}),
    agHttpCli:callAgency(PoolName, ?Post, <<"/_api/database">>, [], BodyStr, infinity).
 
 %% 删除现有数据库
