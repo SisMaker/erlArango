@@ -30,15 +30,15 @@
 
 -spec callAgency(poolNameOrSocket(), method(), path(), headers(), body()) -> term() | {error, term()}.
 callAgency(PoolNameOrSocket, Method, Path, Headers, Body) ->
-   callAgency(PoolNameOrSocket, Method, Path, Headers, Body, ?DEFAULT_TIMEOUT, false).
+   callAgency(PoolNameOrSocket, Method, Path, Headers, Body, false, ?DEFAULT_TIMEOUT).
 
--spec callAgency(poolNameOrSocket(), method(), path(), headers(), body(), timeout()) -> term() | {error, atom()}.
-callAgency(PoolNameOrSocket, Method, Path, Headers, Body, TimeOut) ->
-   callAgency(PoolNameOrSocket, Method, Path, Headers, Body, TimeOut, false).
+-spec callAgency(poolNameOrSocket(), method(), path(), headers(), body(), boolean()) -> term() | {error, atom()}.
+callAgency(PoolNameOrSocket, Method, Path, Headers, Body, IsSystem) ->
+   callAgency(PoolNameOrSocket, Method, Path, Headers, Body, IsSystem, ?DEFAULT_TIMEOUT).
 
--spec callAgency(poolNameOrSocket(), method(), path(), headers(), body(), timeout(), boolean()) -> term() | {error, atom()}.
-callAgency(PoolNameOrSocket, Method, Path, Headers, Body, Timeout, IsSystem) ->
-   case castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), Timeout, IsSystem) of
+-spec callAgency(poolNameOrSocket(), method(), path(), headers(), body(), boolean(), timeout()) -> term() | {error, atom()}.
+callAgency(PoolNameOrSocket, Method, Path, Headers, Body, IsSystem, Timeout) ->
+   case castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), IsSystem, Timeout) of
       {ok, RequestId} ->
          receiveResponse(RequestId);
       {error, _Reason} = Err ->
@@ -49,18 +49,18 @@ callAgency(PoolNameOrSocket, Method, Path, Headers, Body, Timeout, IsSystem) ->
 
 -spec castAgency(poolNameOrSocket(), method(), path(), headers(), body()) -> {ok, requestId()} | {error, atom()}.
 castAgency(PoolNameOrSocket, Method, Path, Headers, Body) ->
-   castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), ?DEFAULT_TIMEOUT, false).
+   castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), false, ?DEFAULT_TIMEOUT).
 
--spec castAgency(poolNameOrSocket(), method(), path(), headers(), body(), timeout()) -> {ok, requestId()} | {error, atom()}.
-castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Timeout) ->
-   castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), Timeout, false).
+-spec castAgency(poolNameOrSocket(), method(), path(), headers(), body(), boolean()) -> {ok, requestId()} | {error, atom()}.
+castAgency(PoolNameOrSocket, Method, Path, Headers, Body, IsSystem) ->
+   castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), IsSystem, ?DEFAULT_TIMEOUT).
 
--spec castAgency(poolNameOrSocket(), method(), path(), headers(), body(), timeout(), boolean()) -> {ok, requestId()} | {error, atom()}.
-castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Timeout, IsSystem) ->
-   castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), Timeout, IsSystem).
+-spec castAgency(poolNameOrSocket(), method(), path(), headers(), body(), boolean(), timeout()) -> {ok, requestId()} | {error, atom()}.
+castAgency(PoolNameOrSocket, Method, Path, Headers, Body, IsSystem, Timeout) ->
+   castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), IsSystem, Timeout).
 
--spec castAgency(poolNameOrSocket(), method(), path(), headers(), body(), pid(), timeout(), boolean()) -> {ok, requestId()} | {error, atom()}.
-castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, Timeout, IsSystem) ->
+-spec castAgency(poolNameOrSocket(), method(), path(), headers(), body(), pid(), boolean(), timeout()) -> {ok, requestId()} | {error, atom()}.
+castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout) ->
    OverTime =
       case Timeout of
          infinity -> infinity;

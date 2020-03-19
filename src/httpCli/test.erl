@@ -45,3 +45,20 @@ test(N, Request) ->
 %%    erlang:put(cnt, N),
 %%    agHttpCli:callAgency(tt, Request, 5000),
 %%    test(N - 1, Request).
+
+
+tcjf(0, Args1) ->
+   Args = #{name => ffd, tet => "fdsff", <<"dfdf">> => 131245435346},
+   jiffy:encode(Args);
+tcjf(N, Args1) ->
+   Args = #{name => ffd, tet => "fdsff", <<"dfdf">> => 131245435346},
+   jiffy:encode(Args),
+   tcjf(N - 1, Args1).
+
+tcjx(0, Args1) ->
+   Args = {[{name, ffd}, {tet, "fdsff"}, {<<"dfdf">>, 131245435346}]},
+   jiffy:encode(Args);
+tcjx(N, Args1) ->
+   Args = {[{name, ffd}, {tet, "fdsff"}, {<<"dfdf">>, 131245435346}]},
+   jiffy:encode(Args),
+   tcjx(N - 1, Args1).
