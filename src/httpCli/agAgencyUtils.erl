@@ -13,7 +13,7 @@
    , agencyReply/2
    , agencyReply/4
    , agencyReplyAll/1
-   , initReconnectState/1
+   , initReconnectState/3
    , resetReconnectState/1
    , updateReconnectState/1
 ]).
@@ -53,7 +53,7 @@ agencyReply(FormPid, RequestId, TimerRef, Reply) ->
 -spec agencyReplyAll(term()) -> ok.
 agencyReplyAll(Reply) ->
    AllList = agAgencyUtils:clearQueue(),
-   [agencyReply(FormPid, RequestId, undefined, Reply) || {miRequest, FormPid, _Method, _Path, _Headers, _Body, RequestId, _Timeout} <- AllList],
+   [agencyReply(FormPid, RequestId, undefined, Reply) || #miRequest{requestId = RequestId, fromPid = FormPid} <- AllList],
    ok.
 
 -spec cancelTimer(undefined | reference()) -> ok.
@@ -74,13 +74,10 @@ cancelTimer(TimerRef) ->
          ok
    end.
 
--spec initReconnectState(agencyOpts()) -> reconnectState() | undefined.
-initReconnectState(Options) ->
-   IsReconnect = ?GET_FROM_LIST(reconnect, Options, ?DEFAULT_IS_RECONNECT),
+-spec initReconnectState(boolean(), pos_integer(), pos_integer()) -> reconnectState() | undefined.
+initReconnectState(IsReconnect, Min, Max) ->
    case IsReconnect of
       true ->
-         Max = ?GET_FROM_LIST(reconnectTimeMax, Options, ?DEFAULT_RECONNECT_MAX),
-         Min = ?GET_FROM_LIST(reconnectTimeMin, Options, ?DEFAULT_RECONNECT_MIN),
          #reconnectState{min = Min, max = Max, current = Min};
       false ->
          undefined

@@ -1,7 +1,7 @@
 -module(agCollections).
 -include("erlArango.hrl").
 
--compile(export_all).
+-compile([export_all, nowarn_export_all]).
 
 % 创建一个集合
 % POST /_api/collection
@@ -57,7 +57,7 @@
 %    400：如果缺少集合名称，则返回HTTP 400。
 %    404：如果集合名称未知，则返回HTTP 404。
 newColl(PoolName, Param) ->
-   BodyStr = jsx:encode(Param),
+   BodyStr = jiffy:encode(Param),
    agHttpCli:callAgency(PoolName, ?Post, <<"/_api/collection">>, [], BodyStr, infinity).
 
 % 删除收藏
@@ -135,7 +135,7 @@ collFigures(PoolName, CoolName) ->
 %% 注意：此方法仅在群集协调器中可用。
 collResponsibleShard(PoolName, CoolName, Param) ->
    Path = <<"/_api/collection/", CoolName/binary, "/responsibleShard">>,
-   BodyStr = jsx:encode(Param),
+   BodyStr = jiffy:encode(Param),
    agHttpCli:callAgency(PoolName, ?Get, Path, [], BodyStr, infinity).
 
 %% 返回集合永久链接的分片 ID
@@ -214,7 +214,7 @@ collLoad(PoolName, CoolName, IsCount) ->
    case IsCount of
       false ->
          Path = <<"/_api/collection/", CoolName/binary, "/load">>,
-         agHttpCli:callAgency(PoolName, ?Put, Path, [],  <<"{\"count\":false}">>, infinity);
+         agHttpCli:callAgency(PoolName, ?Put, Path, [], <<"{\"count\":false}">>, infinity);
       _ ->
          Path = <<"/_api/collection/", CoolName/binary, "/load">>,
          agHttpCli:callAgency(PoolName, ?Put, Path, [], undefined, infinity)

@@ -16,6 +16,7 @@
    serverName :: serverName(),
    userPassWord :: binary(),
    host :: binary(),
+   dbName :: binary(),
    rn :: binary:cp(),
    rnrn :: binary:cp(),
    reconnectState :: undefined | reconnectState(),
@@ -26,49 +27,49 @@
 -type srvState() :: #srvState{}.
 
 -spec init(term()) -> no_return().
-init({PoolName, AgencyName, AgencyOpts}) ->
-   BacklogSize = ?GET_FROM_LIST(backlogSize, AgencyOpts, ?DEFAULT_BACKLOG_SIZE),
-   ReconnectState = agAgencyUtils:initReconnectState(AgencyOpts),
+init({PoolName, AgencyName, #agencyOpts{reconnect = Reconnect, backlogSize = BacklogSize, reconnectTimeMin = Min, reconnectTimeMax = Max}}) ->
+   ReconnectState = agAgencyUtils:initReconnectState(Reconnect, Min, Max),
    self() ! ?miDoNetConnect,
    {ok, #srvState{poolName = PoolName, serverName = AgencyName, rn = binary:compile_pattern(<<"\r\n">>), rnrn = binary:compile_pattern(<<"\r\n\r\n">>), reconnectState = ReconnectState}, #cliState{backlogSize = BacklogSize}}.
 
 -spec handleMsg(term(), srvState(), cliState()) -> {ok, term(), term()}.
-handleMsg({miRequest, FromPid, _Method, _Path, _Headers, _Body, RequestId, _OverTime},
-   #srvState{socket = undefined} = SrvState,
-   CliState) ->
-   agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, no_socket}),
-   {ok, SrvState, CliState};
-handleMsg({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime} = MiRequest,
-   #srvState{serverName = ServerName, host = Host, userPassWord = UserPassWord, socket = Socket} = SrvState,
+handleMsg(#miRequest{method = Method, path = Path, headers = Headers, body = Body, requestId = RequestId, fromPid = FromPid, overTime = OverTime, isSystem = IsSystem} = MiRequest,
+   #srvState{serverName = ServerName, host = Host, userPassWord = UserPassWord, dbName = DbName, socket = Socket} = SrvState,
    #cliState{backlogNum = BacklogNum, backlogSize = BacklogSize, requestsIn = RequestsIn, status = Status} = CliState) ->
-   case BacklogNum >= BacklogSize of
-      true ->
-         ?WARN(ServerName, ":backlog full curNum:~p Total: ~p ~n", [BacklogNum, BacklogSize]),
-         agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, backlog_full}),
+   case Socket of
+      undefined ->
+         agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, no_socket}),
          {ok, SrvState, CliState};
       _ ->
-         case Status of
-            leisure -> %% 空闲模式
-               Request = agHttpProtocol:request(Method, Host, Path, [{<<"Authorization">>, UserPassWord} | Headers], Body),
-               case ssl:send(Socket, Request) of
-                  ok ->
-                     TimerRef =
-                        case OverTime of
-                           infinity ->
-                              undefined;
-                           _ ->
-                              erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
-                        end,
-                     {ok, SrvState, CliState#cliState{status = waiting, backlogNum = BacklogNum + 1, curInfo = {FromPid, RequestId, TimerRef}}};
-                  {error, Reason} ->
-                     ?WARN(ServerName, ":send error: ~p ~p ~p ~n", [Reason, FromPid, RequestId]),
-                     ssl:close(Socket),
-                     agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socket_send_error}),
-                     dealClose(SrvState, CliState, {error, socket_send_error})
-               end;
+         case BacklogNum >= BacklogSize of
+            true ->
+               ?WARN(ServerName, ":backlog full curNum:~p Total: ~p ~n", [BacklogNum, BacklogSize]),
+               agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, backlog_full}),
+               {ok, SrvState, CliState};
             _ ->
-               agAgencyUtils:addQueue(RequestsIn, MiRequest),
-               {ok, SrvState, CliState#cliState{requestsIn = RequestsIn + 1, backlogNum = BacklogNum + 1}}
+               case Status of
+                  leisure -> %% 空闲模式
+                     Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [{<<"Authorization">>, UserPassWord} | Headers]),
+                     case ssl:send(Socket, Request) of
+                        ok ->
+                           TimerRef =
+                              case OverTime of
+                                 infinity ->
+                                    undefined;
+                                 _ ->
+                                    erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
+                              end,
+                           {ok, SrvState, CliState#cliState{status = waiting, backlogNum = BacklogNum + 1, curInfo = {FromPid, RequestId, TimerRef}}};
+                        {error, Reason} ->
+                           ?WARN(ServerName, ":send error: ~p ~p ~p ~n", [Reason, FromPid, RequestId]),
+                           ssl:close(Socket),
+                           agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socket_send_error}),
+                           dealClose(SrvState, CliState, {error, {socket_send_error, Reason}})
+                     end;
+                  _ ->
+                     agAgencyUtils:addQueue(RequestsIn, MiRequest),
+                     {ok, SrvState, CliState#cliState{requestsIn = RequestsIn + 1, backlogNum = BacklogNum + 1}}
+               end
          end
    end;
 handleMsg({ssl, Socket, Data},
@@ -88,20 +89,19 @@ handleMsg({ssl, Socket, Data},
       {error, Reason} ->
          ?WARN(ServerName, "handle ssl data error: ~p ~p ~n", [Reason, CurInfo]),
          ssl:close(Socket),
-         dealClose(SrvState, CliState, {error, ssl_data_error})
+         dealClose(SrvState, CliState, {error, {ssl_data_error, Reason}})
    catch
       E:R:S ->
          ?WARN(ServerName, "handle ssl data crash: ~p:~p~n~p~n ~p~n ", [E, R, S, CurInfo]),
          ssl:close(Socket),
          dealClose(SrvState, CliState, {{error, agency_handledata_error}})
    end;
-handleMsg({timeout, TimerRef, waiting},
+handleMsg({timeout, TimerRef, waiting_over},
    #srvState{socket = Socket} = SrvState,
    #cliState{backlogNum = BacklogNum, curInfo = {FromPid, RequestId, TimerRef}} = CliState) ->
    agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),
    %% 之前的数据超时之后 要关闭ssl 然后重新建立连接 以免后面该ssl收到该次超时数据 影响后面请求的接收数据 导致数据错乱
    ssl:close(Socket),
-   timer:sleep(1000),
    self() ! ?miDoNetConnect,
    {ok, SrvState, CliState#cliState{backlogNum = BacklogNum - 1}};
 handleMsg({ssl_closed, Socket},
@@ -115,22 +115,22 @@ handleMsg({ssl_error, Socket, Reason},
 
    ?WARN(ServerName, "connection error: ~p~n", [Reason]),
    ssl:close(Socket),
-   dealClose(SrvState, CliState, {error, ssl_error});
+   dealClose(SrvState, CliState, {error, {ssl_error, Reason}});
 handleMsg(?miDoNetConnect,
    #srvState{poolName = PoolName, serverName = ServerName, reconnectState = ReconnectState} = SrvState,
    #cliState{requestsOut = RequestsOut} = CliState) ->
    case ?agBeamPool:get(PoolName) of
-      #poolOpts{hostname = HostName, port = Port, host = Host, userPassword = UserPassword} ->
-         case dealConnect(ServerName, HostName, Port, ?DEFAULT_SOCKET_OPTS) of
+      #dbOpts{host = Host, port = Port, hostname = HostName, dbName = DbName, userPassword = UserPassword, socketOpts = SocketOpts} ->
+         case dealConnect(ServerName, HostName, Port, SocketOpts) of
             {ok, Socket} ->
                NewReconnectState = agAgencyUtils:resetReconnectState(ReconnectState),
                %% 新建连接之后 需要重置之前的buff之类状态数据
                NewCliState = CliState#cliState{status = leisure, recvState = undefined, curInfo = undefined},
                case agAgencyUtils:getQueue(RequestsOut + 1) of
                   undefined ->
-                     {ok, SrvState#srvState{userPassWord = UserPassword, host = Host, reconnectState = NewReconnectState, socket = Socket}, NewCliState};
+                     {ok, SrvState#srvState{userPassWord = UserPassword, dbName = DbName, host = Host, reconnectState = NewReconnectState, socket = Socket}, NewCliState};
                   MiRequest ->
-                     dealQueueRequest(MiRequest, SrvState#srvState{socket = Socket}, NewCliState)
+                     dealQueueRequest(MiRequest, SrvState#srvState{socket = Socket, reconnectState = NewReconnectState}, NewCliState)
                end;
             {error, _Reason} ->
                reconnectTimer(SrvState, CliState)
@@ -178,8 +178,8 @@ reconnectTimer(#srvState{reconnectState = ReconnectState} = SrvState, CliState) 
    {ok, SrvState#srvState{reconnectState = MewReconnectState, socket = undefined, timerRef = TimerRef}, CliState}.
 
 
-dealQueueRequest({miRequest, FromPid, Method, Path, Headers, Body, RequestId, OverTime},
-   #srvState{serverName = ServerName, host = Host, userPassWord = UserPassWord, socket = Socket} = SrvState,
+dealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers, body = Body, requestId = RequestId, fromPid = FromPid, overTime = OverTime, isSystem = IsSystem},
+   #srvState{serverName = ServerName, host = Host, userPassWord = UserPassWord, dbName = DbName, socket = Socket} = SrvState,
    #cliState{requestsOut = RequestsOut} = CliState) ->
    agAgencyUtils:delQueue(RequestsOut + 1),
    case erlang:system_time(millisecond) > OverTime of
@@ -188,12 +188,12 @@ dealQueueRequest({miRequest, FromPid, Method, Path, Headers, Body, RequestId, Ov
          agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),
          case agAgencyUtils:getQueue(RequestsOut + 2) of
             undefined ->
-               {ok, SrvState, CliState#cliState{status = waiting, requestsOut = RequestsOut + 1}};
+               {ok, SrvState, CliState#cliState{requestsOut = RequestsOut + 1}};
             MiRequest ->
                dealQueueRequest(MiRequest, SrvState, CliState#cliState{requestsOut = RequestsOut + 1})
          end;
       _ ->
-         Request = agHttpProtocol:request(Method, Host, Path, [{<<"Authorization">>, UserPassWord} | Headers], Body),
+         Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [{<<"Authorization">>, UserPassWord} | Headers]),
          case ssl:send(Socket, Request) of
             ok ->
                TimerRef =
@@ -201,7 +201,7 @@ dealQueueRequest({miRequest, FromPid, Method, Path, Headers, Body, RequestId, Ov
                      infinity ->
                         undefined;
                      _ ->
-                        erlang:start_timer(OverTime, self(), waiting, [{abs, true}])
+                        erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                   end,
                {ok, SrvState, CliState#cliState{status = waiting, requestsOut = RequestsOut + 1, curInfo = {FromPid, RequestId, TimerRef}}};
             {error, Reason} ->

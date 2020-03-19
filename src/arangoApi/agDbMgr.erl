@@ -1,19 +1,19 @@
 -module(agDbMgr).
 -include("erlArango.hrl").
 
--compile(export_all).
+-compile([export_all, nowarn_export_all]).
 
 %% 请注意，所有数据库管理操作只能通过默认数据库（_system）访问，而不能通过其他数据库访问。
 
 %% 检索有关当前数据库的信息
 %% GET /_api/database/current
 curDbInfo(PoolName) ->
-   agHttpCli:callAgency(PoolName, ?Get, <<"/_api/database/current">>, [], undefined, infinity).
+   agHttpCli:callAgency(PoolName, ?Get, <<"/_api/database/current">>, [], undefined).
 
 %% 检索当前用户可以访问的所有数据库的列表
 %% GET /_api/database/user
 userVisitDbs(PoolName) ->
-   agHttpCli:callAgency(PoolName, ?Get, <<"/_api/database/user">>, [], undefined, infinity).
+   agHttpCli:callAgency(PoolName, ?Get, <<"/_api/database/user">>, [], undefined, infinity, true).
 
 %% 创建一个新的数据库 注意：仅可以在_system数据库中创建新数据库。
 %% POST /_api/database
@@ -27,16 +27,16 @@ userVisitDbs(PoolName) ->
 
 newDb(PoolName, Name) ->
    NameStr = jiffy:encode(Name),
-   agHttpCli:callAgency(PoolName, ?Post, <<"/_api/database">>, [], [<<"{\"name\":">>, NameStr, <<"}">>], infinity).
+   agHttpCli:callAgency(PoolName, ?Post, <<"/_api/database">>, [], [<<"{\"name\":">>, NameStr, <<"}">>], infinity, true).
 
 newDb(PoolName, Name, Users) ->
 
    BodyStr = jiffy:encode(#{<<"name">> => Name, <<"users">> => Users}),
-   agHttpCli:callAgency(PoolName, ?Post, <<"/_api/database">>, [], BodyStr, infinity).
+   agHttpCli:callAgency(PoolName, ?Post, <<"/_api/database">>, [], BodyStr, infinity, true).
 
 %% 删除现有数据库
 %% DELETE /_api/database/{database-name}
 
 delDb(PoolName, Name) ->
    Path = <<"/_api/database/", Name/binary>>,
-   agHttpCli:callAgency(PoolName, ?Delete, Path, [], undefined, infinity).
+   agHttpCli:callAgency(PoolName, ?Delete, Path, [], undefined, infinity, true).

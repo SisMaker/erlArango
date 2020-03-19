@@ -30,11 +30,11 @@ init(_Args) ->
    agKvsToBeam:load(?agBeamAgency, []),
    {ok, undefined}.
 
-handleMsg({'$gen_call', From, {startPool, PoolName, PoolCfgs, AgencyOpts}}, State) ->
-   dealStart(PoolName, PoolCfgs, AgencyOpts),
+handleMsg({'$gen_call', From, {miStartPool, PoolName, DbCfgs, AgencyOpts}}, State) ->
+   dealStart(PoolName, DbCfgs, AgencyOpts),
    gen_server:reply(From, ok),
    {ok, State};
-handleMsg({'$gen_call', From, {stopPool, Name}}, State) ->
+handleMsg({'$gen_call', From, {miStopPool, Name}}, State) ->
    delaStop(Name),
    gen_server:reply(From, ok),
    {ok, State};
@@ -45,15 +45,15 @@ handleMsg(_Msg, State) ->
 terminate(_Reason, _State) ->
    ok.
 
--spec startPool(poolName(), poolCfgs()) -> ok | {error, pool_name_used}.
-startPool(PoolName, PoolCfgs) ->
-   startPool(PoolName, PoolCfgs, []).
+-spec startPool(poolName(), dbCfgs()) -> ok | {error, pool_name_used}.
+startPool(PoolName, DbCfgs) ->
+   startPool(PoolName, DbCfgs, []).
 
--spec startPool(poolName(), poolCfgs(), agencyOpts()) -> ok | {error, pool_name_used}.
-startPool(PoolName, PoolCfgs, AgencyOpts) ->
+-spec startPool(poolName(), dbCfgs(), agencyCfgs()) -> ok | {error, pool_name_used}.
+startPool(PoolName, DbCfgs, AgencyCfgs) ->
    case ?agBeamPool:get(PoolName) of
       undefined ->
-         gen_server:call(?agAgencyPoolMgr, {startPool, PoolName, PoolCfgs, AgencyOpts});
+         gen_server:call(?agAgencyPoolMgr, {miStartPool, PoolName, DbCfgs, AgencyCfgs});
       _ ->
          {error, pool_name_used}
    end.
@@ -64,14 +64,14 @@ stopPool(PoolName) ->
       undefined ->
          {error, pool_not_started};
       _ ->
-         gen_server:call(?agAgencyPoolMgr, {stopPool, PoolName})
+         gen_server:call(?agAgencyPoolMgr, {miStopPool, PoolName})
 
    end.
 
-dealStart(PoolName, PoolCfgs, AgencyOpts) ->
-   #poolOpts{poolSize = PoolSize, protocol = Protocol} = PoolOpts = poolOpts(PoolCfgs),
-   cacheAddPool(PoolName, PoolOpts),
-
+dealStart(PoolName, DbCfgs, AgencyCfgs) ->
+   #dbOpts{poolSize = PoolSize, protocol = Protocol} = DbOpts = agMiscUtils:dbOpts(DbCfgs),
+   AgencyOpts = agMiscUtils:agencyOpts(AgencyCfgs),
+   cacheAddPool(PoolName, DbOpts),
    startChildren(PoolName, Protocol, PoolSize, AgencyOpts),
    cacheAddAgency(PoolName, PoolSize),
    case persistent_term:get(PoolName, undefined) of
@@ -87,21 +87,12 @@ delaStop(PoolName) ->
    case ?agBeamPool:get(PoolName) of
       undefined ->
          {error, pool_not_started};
-      #poolOpts{poolSize = PoolSize} ->
+      #dbOpts{poolSize = PoolSize} ->
          stopChildren(agencyNames(PoolName, PoolSize)),
          cacheDelPool(PoolName),
          cacheDelAgency(PoolName),
          ok
    end.
-
-poolOpts(Options) ->
-   BaseUrl = ?GET_FROM_LIST(baseUrl, Options, ?DEFAULT_BASE_URL),
-   UserPassword = ?GET_FROM_LIST(user, Options, ?USER_PASSWORD),
-   PoolSize = ?GET_FROM_LIST(poolSize, Options, ?DEFAULT_POOL_SIZE),
-   PoolOpts = agMiscUtils:parseUrl(BaseUrl),
-   UserPasswordBase64 = <<"Basic ", (base64:encode(UserPassword))/binary>>,
-   PoolOpts#poolOpts{userPassword = UserPasswordBase64, poolSize = PoolSize}.
-
 
 agencyName(PoolName, Index) ->
    list_to_atom(atom_to_list(PoolName) ++ "_" ++ integer_to_list(Index)).
@@ -119,7 +110,7 @@ agencyMod(_) ->
 agencySpec(ServerMod, ServerName, Args) ->
    %% TODO 下面spawn_opt 参数需要调优
    StartFunc = {ServerMod, start_link, [ServerName, Args, [{min_heap_size, 5000}, {min_bin_vheap_size, 100000}, {fullsweep_after, 500}]]},
-   {ServerName, StartFunc, transient, 5000, worker, [ServerMod]}.
+   {ServerName, StartFunc, transient, infinity, worker, [ServerMod]}.
 
 -spec startChildren(atom(), protocol(), poolSize(), agencyOpts()) -> ok.
 startChildren(PoolName, Protocol, PoolSize, AgencyOpts) ->
@@ -130,8 +121,8 @@ startChildren(PoolName, Protocol, PoolSize, AgencyOpts) ->
    ok.
 
 stopChildren([AgencyName | T]) ->
-   supervisor:terminate_child(agAgencyPool_sup, AgencyName),
-   supervisor:delete_child(agAgencyPool_sup, AgencyName),
+   ok = supervisor:terminate_child(agAgencyPool_sup, AgencyName),
+   ok = supervisor:delete_child(agAgencyPool_sup, AgencyName),
    stopChildren(T);
 stopChildren([]) ->
    ok.
@@ -165,7 +156,7 @@ getOneAgency(PoolName) ->
    case ?agBeamPool:get(PoolName) of
       undefined ->
          {error, pool_not_found};
-      #poolOpts{poolSize = PoolSize} ->
+      #dbOpts{poolSize = PoolSize} ->
          Ref = persistent_term:get(PoolName),
          AgencyIdx = atomics:add_get(Ref, 1, 1),
          case AgencyIdx >= PoolSize of

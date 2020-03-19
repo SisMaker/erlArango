@@ -5,53 +5,121 @@
 -compile({inline_size, 128}).
 
 -export([
+   %% 请求通用API
    callAgency/5
    , callAgency/6
+   , callAgency/7
    , castAgency/5
    , castAgency/6
    , castAgency/7
+   , castAgency/8
    , receiveResponse/1
 
+   %% 连接池API
    , startPool/2
    , startPool/3
    , stopPool/1
-   , start/0
+
+   %% 单进程操作DbAPI
+   , connectDb/1
+   , disConnectDb/1
+   , getCurDbInfo/1
+   , setCurDbName/2
 
 ]).
 
--spec callAgency(poolName(), method(), path(), headers(), body()) -> term() | {error, term()}.
-callAgency(PoolName, Method, Path, Headers, Body) ->
-   callAgency(PoolName, Method, Path, Headers, Body, ?DEFAULT_TIMEOUT).
+-spec callAgency(poolNameOrSocket(), method(), path(), headers(), body()) -> term() | {error, term()}.
+callAgency(PoolNameOrSocket, Method, Path, Headers, Body) ->
+   callAgency(PoolNameOrSocket, Method, Path, Headers, Body, ?DEFAULT_TIMEOUT, false).
 
--spec callAgency(poolName(), method(), path(), headers(), body(), timeout()) -> term() | {error, atom()}.
-callAgency(PoolName, Method, Path, Headers, Body, Timeout) ->
-   case castAgency(PoolName, Method, Path, Headers, Body, Timeout, self()) of
+-spec callAgency(poolNameOrSocket(), method(), path(), headers(), body(), timeout()) -> term() | {error, atom()}.
+callAgency(PoolNameOrSocket, Method, Path, Headers, Body, TimeOut) ->
+   callAgency(PoolNameOrSocket, Method, Path, Headers, Body, TimeOut, false).
+
+-spec callAgency(poolNameOrSocket(), method(), path(), headers(), body(), timeout(), boolean()) -> term() | {error, atom()}.
+callAgency(PoolNameOrSocket, Method, Path, Headers, Body, Timeout, IsSystem) ->
+   case castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), Timeout, IsSystem) of
       {ok, RequestId} ->
          receiveResponse(RequestId);
-      {error, Reason} ->
-         {error, Reason}
+      {error, _Reason} = Err ->
+         Err;
+      Ret ->
+         Ret
    end.
 
--spec castAgency(poolName(), method(), path(), headers(), body()) -> {ok, requestId()} | {error, atom()}.
-castAgency(PoolName, Method, Path, Headers, Body) ->
-   castAgency(PoolName, Method, Path, Headers, Body, ?DEFAULT_TIMEOUT, self()).
+-spec castAgency(poolNameOrSocket(), method(), path(), headers(), body()) -> {ok, requestId()} | {error, atom()}.
+castAgency(PoolNameOrSocket, Method, Path, Headers, Body) ->
+   castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), ?DEFAULT_TIMEOUT, false).
 
--spec castAgency(poolName(), method(), path(), headers(), body(), timeout()) -> {ok, requestId()} | {error, atom()}.
-castAgency(PoolName, Method, Path, Headers, Body, Timeout) ->
-   castAgency(PoolName, Method, Path, Headers, Body, Timeout, self()).
+-spec castAgency(poolNameOrSocket(), method(), path(), headers(), body(), timeout()) -> {ok, requestId()} | {error, atom()}.
+castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Timeout) ->
+   castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), Timeout, false).
 
--spec castAgency(poolName(), method(), path(), headers(), body(), timeout(), pid()) -> {ok, requestId()} | {error, atom()}.
-castAgency(PoolName, Method, Path, Headers, Body, Timeout, Pid) ->
-   case agAgencyPoolMgrIns:getOneAgency(PoolName) of
-      {error, pool_not_found} = Error ->
-         Error;
-      undefined ->
-         {error, undefined_server};
-      AgencyName ->
-         RequestId = {AgencyName, make_ref()},
-         OverTime = case Timeout == infinity of true -> infinity; _ -> erlang:system_time(millisecond) + Timeout end,
-         catch AgencyName ! {miRequest, Pid, Method, Path, Headers, Body, RequestId, OverTime},
-         {ok, RequestId}
+-spec castAgency(poolNameOrSocket(), method(), path(), headers(), body(), timeout(), boolean()) -> {ok, requestId()} | {error, atom()}.
+castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Timeout, IsSystem) ->
+   castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), Timeout, IsSystem).
+
+-spec castAgency(poolNameOrSocket(), method(), path(), headers(), body(), pid(), timeout(), boolean()) -> {ok, requestId()} | {error, atom()}.
+castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, Timeout, IsSystem) ->
+   OverTime =
+      case Timeout of
+         infinity -> infinity;
+         _ ->
+            erlang:system_time(millisecond) + Timeout
+      end,
+   case erlang:is_atom(PoolNameOrSocket) of
+      true ->
+         case agAgencyPoolMgrIns:getOneAgency(PoolNameOrSocket) of
+            {error, pool_not_found} = Err ->
+               Err;
+            undefined ->
+               {error, undefined_server};
+            AgencyName ->
+               RequestId = {AgencyName, make_ref()},
+               catch AgencyName ! #miRequest{method = Method, path = Path, headers = Headers, body = Body, requestId = RequestId, fromPid = Pid, overTime = OverTime, isSystem = IsSystem},
+               {ok, RequestId}
+         end;
+      _ ->
+         case getCurDbInfo(PoolNameOrSocket) of
+            {DbName, UserPassWord, Host, Protocol} ->
+               Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [{<<"Authorization">>, UserPassWord} | Headers]),
+               case Protocol of
+                  tcp ->
+                     case gen_tcp:send(PoolNameOrSocket, Request) of
+                        ok ->
+                           TimerRef =
+                              case OverTime of
+                                 infinity ->
+                                    undefined;
+                                 _ ->
+                                    erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
+                              end,
+                           receiveTcpData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>));
+                        {error, Reason} = Err ->
+                           ?WARN(castAgency, ":gen_tcp send error: ~p ~n", [Reason]),
+                           gen_tcp:close(PoolNameOrSocket),
+                           Err
+                     end;
+                  ssl ->
+                     case ssl:send(PoolNameOrSocket, Request) of
+                        ok ->
+                           TimerRef =
+                              case OverTime of
+                                 infinity ->
+                                    undefined;
+                                 _ ->
+                                    erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
+                              end,
+                           receiveSslData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>));
+                        {error, Reason} = Err ->
+                           ?WARN(castAgency, ":ssl send error: ~p ~n", [Reason]),
+                           ssl:close(PoolNameOrSocket),
+                           Err
+                     end
+               end;
+            _ ->
+               {error, dbinfo_not_found}
+         end
    end.
 
 -spec receiveResponse(requestId()) -> term() | {error, term()}.
@@ -61,18 +129,139 @@ receiveResponse(RequestId) ->
          Reply
    end.
 
--spec startPool(poolName(), poolCfgs()) -> ok | {error, pool_name_used}.
-startPool(PoolName, PoolCfgs) ->
-   agAgencyPoolMgrIns:startPool(PoolName, PoolCfgs, []).
+-spec receiveTcpData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp()) -> requestRet() | {error, term()}.
+receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn) ->
+   receive
+      {tcp, Socket, Data} ->
+         try agHttpProtocol:response(RecvState, Rn, RnRn, Data) of
+            {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, body = Body}} ->
+               #requestRet{statusCode = StatusCode, contentLength = ContentLength, body = Body};
+            {ok, NewRecvState} ->
+               receiveTcpData(NewRecvState, Socket, TimerRef, Rn, RnRn);
+            {error, Reason} ->
+               ?WARN(receiveTcpData, "handle tcp data error: ~p ~n", [Reason]),
+               disConnectDb(Socket),
+               {error, {tcp_data_error, Reason}}
+         catch
+            E:R:S ->
+               ?WARN(receiveTcpData, "handle tcp data crash: ~p:~p~n~p ~n ", [E, R, S]),
+               disConnectDb(Socket),
+               {error, handledata_error}
+         end;
+      {timeout, TimerRef, waiting_over} ->
+         {error, timeout};
+      {tcp_closed, Socket} ->
+         disConnectDb(Socket),
+         {error, tcp_closed};
+      {tcp_error, Socket, Reason} ->
+         disConnectDb(Socket),
+         {error, {tcp_error, Reason}}
+   end.
 
--spec startPool(poolName(), poolCfgs(), agencyOpts()) -> ok | {error, pool_name_used}.
-startPool(PoolName, PoolCfgs, AgencyOpts) ->
-   agAgencyPoolMgrIns:startPool(PoolName, PoolCfgs, AgencyOpts).
+-spec receiveSslData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp()) -> requestRet() | {error, term()}.
+receiveSslData(RecvState, Socket, TimerRef, Rn, RnRn) ->
+   receive
+      {ssl, Socket, Data} ->
+         try agHttpProtocol:response(RecvState, Rn, RnRn, Data) of
+            {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, body = Body}} ->
+               #requestRet{statusCode = StatusCode, contentLength = ContentLength, body = Body};
+            {ok, NewRecvState} ->
+               receiveTcpData(NewRecvState, Socket, TimerRef, Rn, RnRn);
+            {error, Reason} ->
+               ?WARN(receiveSslData, "handle tcp data error: ~p ~n", [Reason]),
+               disConnectDb(Socket),
+               {error, {ssl_data_error, Reason}}
+         catch
+            E:R:S ->
+               ?WARN(receiveSslData, "handle tcp data crash: ~p:~p~n~p ~n ", [E, R, S]),
+               disConnectDb(Socket),
+               {error, handledata_error}
+         end;
+      {timeout, TimerRef, waiting_over} ->
+         {error, timeout};
+      {ssl_closed, Socket} ->
+         disConnectDb(Socket),
+         {error, ssl_closed};
+      {ssl_error, Socket, Reason} ->
+         disConnectDb(Socket),
+         {error, {ssl_error, Reason}}
+   end.
+
+-spec startPool(poolName(), dbCfgs()) -> ok | {error, pool_name_used}.
+startPool(PoolName, DbCfgs) ->
+   agAgencyPoolMgrIns:startPool(PoolName, DbCfgs, []).
+
+-spec startPool(poolName(), dbCfgs(), agencyCfgs()) -> ok | {error, pool_name_used}.
+startPool(PoolName, DbCfgs, AgencyCfgs) ->
+   agAgencyPoolMgrIns:startPool(PoolName, DbCfgs, AgencyCfgs).
 
 -spec stopPool(poolName()) -> ok | {error, pool_not_started}.
 stopPool(PoolName) ->
    agAgencyPoolMgrIns:stopPool(PoolName).
 
-start() ->
-   application:start(erlArango),
-   agHttpCli:startPool(tp, []).
+-spec connectDb(dbCfgs()) -> {ok, socket()} | error.
+connectDb(DbCfgs) ->
+   #dbOpts{
+      host = Host,
+      port = Port,
+      hostname = HostName,
+      dbName = DbName,
+      protocol = Protocol,
+      userPassword = UserPassword,
+      socketOpts = SocketOpts
+   } = agMiscUtils:dbOpts(DbCfgs),
+   case inet:getaddrs(HostName, inet) of
+      {ok, IPList} ->
+         Ip = agMiscUtils:randomElement(IPList),
+         case Protocol of
+            tcp ->
+               case gen_tcp:connect(Ip, Port, SocketOpts, ?DEFAULT_CONNECT_TIMEOUT) of
+                  {ok, Socket} ->
+                     setCurDbInfo(Socket, DbName, UserPassword, Host, Protocol),
+                     {ok, Socket};
+                  {error, Reason} = Err ->
+                     ?WARN(connectDb, "connect error: ~p~n", [Reason]),
+                     Err
+               end;
+            ssl ->
+               case ssl:connect(Ip, Port, SocketOpts, ?DEFAULT_CONNECT_TIMEOUT) of
+                  {ok, Socket} ->
+                     setCurDbInfo(Socket, DbName, UserPassword, Host, Protocol),
+                     {ok, Socket};
+                  {error, Reason} = Err ->
+                     ?WARN(connectDb, "connect error: ~p~n", [Reason]),
+                     Err
+               end
+         end;
+      {error, Reason} = Err ->
+         ?WARN(connectDb, "getaddrs error: ~p~n", [Reason]),
+         Err
+   end.
+
+disConnectDb(Socket) ->
+   case erlang:erase({'$agDbInfo', Socket}) of
+      undefined ->
+         ignore;
+      {_DbName, _UserPassword, _Host, Protocol} ->
+         case Protocol of
+            tcp ->
+               gen_tcp:close(Socket);
+            ssl ->
+               ssl:close(Socket)
+         end
+   end.
+
+setCurDbInfo(Socket, DbName, UserPassword, Host, Protocol) ->
+   erlang:put({'$agDbInfo', Socket}, {DbName, UserPassword, Host, Protocol}).
+
+getCurDbInfo(Socket) ->
+   erlang:get({'$agDbInfo', Socket}).
+
+setCurDbName(Socket, NewDbName) ->
+   case erlang:get({'$agDbInfo', Socket}) of
+      undefined ->
+         ignore;
+      {_DbName, UserPassword, Host, Protocol} ->
+         erlang:put({'$agDbInfo', Socket}, {NewDbName, UserPassword, Host, Protocol})
+   end,
+   ok.

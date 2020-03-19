@@ -3,7 +3,8 @@
 -define(agBeamAgency, agBeamAgency).
 
 %% 默认值定义
--define(DEFAULT_BASE_URL, <<"http://127.0.0.1:8529">>).
+-define(DEFAULT_BASE_URL, <<"http://120.77.213.39:8529">>).
+-define(DEFAULT_DBNAME, <<"_db/_system">>).
 -define(USER_PASSWORD, <<"root:156736">>).
 -define(DEFAULT_BACKLOG_SIZE, 1024).
 -define(DEFAULT_INIT_OPTS, undefined).
@@ -29,16 +30,20 @@
 
 -define(miDoNetConnect, miDoNetConnect).
 
+-record(miRequest, {
+   method :: method()
+   , path :: path()
+   , headers :: headers()
+   , body :: body()
+   , requestId :: tuple()
+   , fromPid :: pid()
+   , overTime = infinity :: timeout()
+   , isSystem = false :: boolean()
+}).
+
 -record(miAgHttpCliRet, {
    requestId :: requestId(),
    reply :: term()
-}).
-
--record(request, {
-   requestId :: requestId(),
-   pid :: pid() | undefined,
-   timeout :: timeout(),
-   timestamp :: erlang:timestamp()
 }).
 
 -record(requestRet, {
@@ -72,23 +77,33 @@
    recvState :: recvState() | undefined
 }).
 
--record(poolOpts, {
+-record(dbOpts, {
    host :: host(),
    port :: 0..65535,
    hostname :: string(),
+   dbName :: binary(),
    protocol :: protocol(),
    poolSize :: binary(),
-   userPassword :: binary()
+   userPassword :: binary(),
+   socketOpts :: [gen_tcp:connect_option(), ...]
 }).
 
+-record(agencyOpts, {
+   reconnect :: boolean(),
+   backlogSize :: backlogSize(),
+   reconnectTimeMin :: pos_integer(),
+   reconnectTimeMax :: pos_integer()
+}).
+
+-type miRequest() :: #miRequest{}.
 -type miAgHttpCliRet() :: #miAgHttpCliRet{}.
--type request() :: #request{}.
 -type requestRet() :: #requestRet{}.
 -type recvState() :: #recvState{}.
 -type cliState() :: #cliState{}.
 -type reconnectState() :: #reconnectState{}.
 
 -type poolName() :: atom().
+-type poolNameOrSocket() :: atom() | socket().
 -type serverName() :: atom().
 -type protocol() :: ssl | tcp.
 -type method() :: binary().
@@ -104,22 +119,23 @@
 -type socket() :: inet:socket() | ssl:sslsocket().
 -type error() :: {error, term()}.
 
--type poolCfg() ::
-   {baseUrl, binary()} |
-   {user, binary()} |
-   {password, binary()} |
-   {poolSize, poolSize()}.
+-type dbCfg() ::
+{baseUrl, binary()} |
+{dbName, binary()} |
+{userPassword, binary()} |
+{poolSize, poolSize()} |
+{socketOpts, [gen_tcp:connect_option(), ...]}.
 
--type agencyOpt() ::
-   {reconnect, boolean()} |
-   {backlogSize, backlogSize()} |
-   {reconnectTimeMin, pos_integer()} |
-   {reconnectTimeMax, pos_integer()} |
-   {socketOpts, [gen_tcp:connect_option(), ...]}.
+-type agencyCfg() ::
+{reconnect, boolean()} |
+{backlogSize, backlogSize()} |
+{reconnectTimeMin, pos_integer()} |
+{reconnectTimeMax, pos_integer()}.
 
--type poolCfgs() :: [poolCfg()].
--type poolOpts() :: #poolOpts{}.
--type agencyOpts() :: [agencyOpt()].
+-type dbCfgs() :: [dbCfg()].
+-type dbOpts() :: #dbOpts{}.
+-type agencyCfgs() :: [agencyCfg()].
+-type agencyOpts() :: #agencyOpts{}.
 
 %% http header 头
 %% -type header() ::
