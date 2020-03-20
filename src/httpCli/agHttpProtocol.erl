@@ -16,13 +16,13 @@
 request(true, undefined, Method, Host, _DbName, Path, Headers) ->
    [
       Method, <<" ">>, Path, <<" HTTP/1.1\r\nHost: ">>, Host, <<"_db/_system">>,
-      <<"\r\nConnection: Keep-Alive\r\nUser-Agent: erlArango\r\nContent-Length: 0\r\n">>,
+      <<"\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 0\r\n">>,
       spellHeaders(Headers), <<"\r\n">>
    ];
 request(false, undefined, Method, Host, DbName, Path, Headers) ->
    [
       Method, <<" ">>, Path, <<" HTTP/1.1\r\nHost: ">>, Host, DbName,
-      <<"\r\nConnection: Keep-Alive\r\nUser-Agent: erlArango\r\nContent-Length: 0\r\n">>,
+      <<"\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 0\r\n">>,
       spellHeaders(Headers), <<"\r\n">>
    ];
 request(false, Body, Method, Host, DbName, Path, Headers) ->
@@ -31,7 +31,7 @@ request(false, Body, Method, Host, DbName, Path, Headers) ->
    [
       Method, <<" ">>, Path,
       <<" HTTP/1.1\r\nHost: ">>, Host, DbName,
-      <<"\r\nConnection: Keep-Alive\r\nUser-Agent: erlArango\r\n">>,
+      <<"\r\nContent-Type: application/json; charset=utf-8\r\n">>,
       spellHeaders(NewHeaders), <<"\r\n">>, Body
    ];
 request(true, Body, Method, Host, _DbName, Path, Headers) ->
@@ -40,7 +40,7 @@ request(true, Body, Method, Host, _DbName, Path, Headers) ->
    [
       Method, <<" ">>, Path,
       <<" HTTP/1.1\r\nHost: ">>, Host, <<"_db/_system">>,
-      <<"\r\nConnection: Keep-Alive\r\nUser-Agent: erlArango\r\n">>,
+      <<"\r\nContent-Type: application/json; charset=utf-8\r\n">>,
       spellHeaders(NewHeaders), <<"\r\n">>, Body
    ].
 
@@ -140,7 +140,7 @@ response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data) ->
    end.
 
 spellHeaders(Headers) ->
-   [[Key, <<": ">>, Value, <<"\r\n">>] || {Key, Value} <- Headers].
+   [<<Key/binary, ": ", Value/binary, "\r\n">> || {Key, Value} <- Headers].
 
 splitHeaders(Data, Rn, RnRn) ->
    case binary:split(Data, RnRn) of

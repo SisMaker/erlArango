@@ -11,6 +11,7 @@
    , warnMsg/3
    , getListValue/3
    , randomElement/1
+   , toBinary/1
 ]).
 
 -spec parseUrl(binary()) -> dbOpts() | {error, invalid_url}.
@@ -46,7 +47,7 @@ parseUrl(Protocol, Rest) ->
 
 dbOpts(DbCfgs) ->
    BaseUrl = ?GET_FROM_LIST(baseUrl, DbCfgs, ?DEFAULT_BASE_URL),
-   DbName = ?GET_FROM_LIST(dbName, DbCfgs, ?USER_PASSWORD),
+   DbName = ?GET_FROM_LIST(dbName, DbCfgs, ?DEFAULT_DBNAME),
    UserPassword = ?GET_FROM_LIST(userPassword, DbCfgs, ?USER_PASSWORD),
    PoolSize = ?GET_FROM_LIST(poolSize, DbCfgs, ?DEFAULT_POOL_SIZE),
    SocketOpts = ?GET_FROM_LIST(socketOpts, DbCfgs, ?DEFAULT_SOCKET_OPTS),
@@ -55,10 +56,10 @@ dbOpts(DbCfgs) ->
    DbOpts#dbOpts{dbName = DbName, userPassword = UserPasswordBase64, poolSize = PoolSize, socketOpts = SocketOpts}.
 
 agencyOpts(AgencyCfgs) ->
-   IsReconnect = ?GET_FROM_LIST(reconnect, AgencyCfgs, ?DEFAULT_BASE_URL),
-   BacklogSize = ?GET_FROM_LIST(backlogSize, AgencyCfgs, ?USER_PASSWORD),
-   Min = ?GET_FROM_LIST(reconnectTimeMin, AgencyCfgs, ?USER_PASSWORD),
-   Max = ?GET_FROM_LIST(reconnectTimeMax, AgencyCfgs, ?DEFAULT_POOL_SIZE),
+   IsReconnect = ?GET_FROM_LIST(reconnect, AgencyCfgs, ?DEFAULT_IS_RECONNECT),
+   BacklogSize = ?GET_FROM_LIST(backlogSize, AgencyCfgs, ?DEFAULT_BACKLOG_SIZE),
+   Min = ?GET_FROM_LIST(reconnectTimeMin, AgencyCfgs, ?DEFAULT_RECONNECT_MIN),
+   Max = ?GET_FROM_LIST(reconnectTimeMax, AgencyCfgs, ?DEFAULT_RECONNECT_MAX),
    #agencyOpts{reconnect = IsReconnect, backlogSize = BacklogSize, reconnectTimeMin = Min, reconnectTimeMax = Max}.
 
 
@@ -80,3 +81,12 @@ randomElement([X]) ->
 randomElement([_ | _] = List) ->
    T = list_to_tuple(List),
    element(rand:uniform(tuple_size(T)), T).
+
+toBinary(Value) when is_integer(Value) -> integer_to_binary(Value);
+toBinary(Value) when is_list(Value) -> list_to_binary(Value);
+toBinary(Value) when is_float(Value) -> float_to_binary(Value, [{decimals, 6}, compact]);
+toBinary(Value) when is_atom(Value) -> atom_to_binary(Value, utf8);
+toBinary(Value) when is_binary(Value) -> Value;
+toBinary([Tuple | PropList] = Value) when is_list(PropList) and is_tuple(Tuple) ->
+   lists:map(fun({K, V}) -> {toBinary(K), toBinary(V)} end, Value);
+toBinary(Value) -> term_to_binary(Value).

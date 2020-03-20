@@ -10,6 +10,8 @@
    , delQueue/1
    , clearQueue/0
    , cancelTimer/1
+   , dealClose/3
+   , reconnectTimer/2
    , agencyReply/2
    , agencyReply/4
    , agencyReplyAll/1
@@ -30,6 +32,18 @@ delQueue(RequestsIn) ->
 clearQueue() ->
    erlang:erase().
 
+dealClose(SrvState,  #cliState{curInfo = CurInfo} = ClientState, Reply) ->
+   agAgencyUtils:agencyReply(CurInfo, Reply),
+   agAgencyUtils:agencyReplyAll(Reply),
+   reconnectTimer(SrvState, ClientState).
+
+reconnectTimer(#srvState{reconnectState = undefined} = SrvState, CliState) ->
+   {ok, {SrvState#srvState{socket = undefined}, CliState}};
+reconnectTimer(#srvState{reconnectState = ReconnectState} = SrvState, CliState) ->
+   #reconnectState{current = Current} = MewReconnectState = agAgencyUtils:updateReconnectState(ReconnectState),
+   TimerRef = erlang:send_after(Current, self(), ?miDoNetConnect),
+   {ok, SrvState#srvState{reconnectState = MewReconnectState, socket = undefined, timerRef = TimerRef}, CliState}.
+
 -spec agencyReply(term(), term()) -> ok.
 agencyReply({undefined, _RequestId, TimerRef}, _Reply) ->
    agAgencyUtils:cancelTimer(TimerRef);
@@ -37,8 +51,7 @@ agencyReply({PidForm, RequestId, TimerRef}, Reply) ->
    agAgencyUtils:cancelTimer(TimerRef),
    catch PidForm ! #miAgHttpCliRet{requestId = RequestId, reply = Reply},
    ok;
-agencyReply(undefined, RequestRet) ->
-   ?WARN(not_curInfo, "not find curInfo ret is:~p~n ", [RequestRet]),
+agencyReply(undefined, _RequestRet) ->
    ok.
 
 -spec agencyReply(undefined | pid(), requestId(), undefined | reference(), term()) -> ok.

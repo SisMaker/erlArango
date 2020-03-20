@@ -83,6 +83,7 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
          case getCurDbInfo(PoolNameOrSocket) of
             {DbName, UserPassWord, Host, Protocol} ->
                Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [{<<"Authorization">>, UserPassWord} | Headers]),
+               io:format("IMY*******************************~n~p ~n",[Request]),
                case Protocol of
                   tcp ->
                      case gen_tcp:send(PoolNameOrSocket, Request) of
@@ -97,7 +98,7 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
                            receiveTcpData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>));
                         {error, Reason} = Err ->
                            ?WARN(castAgency, ":gen_tcp send error: ~p ~n", [Reason]),
-                           gen_tcp:close(PoolNameOrSocket),
+                           disConnectDb(PoolNameOrSocket),
                            Err
                      end;
                   ssl ->
@@ -113,7 +114,7 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
                            receiveSslData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>));
                         {error, Reason} = Err ->
                            ?WARN(castAgency, ":ssl send error: ~p ~n", [Reason]),
-                           ssl:close(PoolNameOrSocket),
+                           disConnectDb(PoolNameOrSocket),
                            Err
                      end
                end;
@@ -133,9 +134,10 @@ receiveResponse(RequestId) ->
 receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn) ->
    receive
       {tcp, Socket, Data} ->
+         io:format("IMY*******************************  ~p ~n ",[Data]),
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data) of
-            {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, body = Body}} ->
-               #requestRet{statusCode = StatusCode, contentLength = ContentLength, body = Body};
+            {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, headers = Headers, body = Body}} ->
+               #requestRet{statusCode = StatusCode, contentLength = ContentLength, headers= Headers, body = Body};
             {ok, NewRecvState} ->
                receiveTcpData(NewRecvState, Socket, TimerRef, Rn, RnRn);
             {error, Reason} ->
