@@ -93,7 +93,7 @@ handleMsg({ssl_closed, Socket},
    #srvState{socket = Socket, serverName = ServerName} = SrvState,
    CliState) ->
    ?WARN(ServerName, "connection closed~n", []),
-   ssl:close(Socket),	
+   ssl:close(Socket),
    agAgencyUtils:dealClose(SrvState, CliState, {error, ssl_closed});
 handleMsg({ssl_error, Socket, Reason},
    #srvState{socket = Socket, serverName = ServerName} = SrvState,
