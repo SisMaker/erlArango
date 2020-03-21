@@ -1,5 +1,6 @@
 -module(agHttpCli).
 -include("agHttpCli.hrl").
+-include("erlArango.hrl").
 
 -compile(inline).
 -compile({inline_size, 128}).
@@ -82,8 +83,8 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
       _ ->
          case getCurDbInfo(PoolNameOrSocket) of
             {DbName, UserPassWord, Host, Protocol} ->
-               Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [{<<"Authorization">>, UserPassWord} | Headers]),
-               io:format("IMY*******************************~n~p ~n",[Request]),
+               Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [UserPassWord | Headers]),
+               io:format("IMY*******************************~n~p ~n", [Request]),
                case Protocol of
                   tcp ->
                      case gen_tcp:send(PoolNameOrSocket, Request) of
@@ -95,7 +96,7 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
                                  _ ->
                                     erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                               end,
-                           receiveTcpData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>));
+                           receiveTcpData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>), Method == ?Head);
                         {error, Reason} = Err ->
                            ?WARN(castAgency, ":gen_tcp send error: ~p ~n", [Reason]),
                            disConnectDb(PoolNameOrSocket),
@@ -111,7 +112,7 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
                                  _ ->
                                     erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                               end,
-                           receiveSslData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>));
+                           receiveSslData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>), Method == ?Head);
                         {error, Reason} = Err ->
                            ?WARN(castAgency, ":ssl send error: ~p ~n", [Reason]),
                            disConnectDb(PoolNameOrSocket),
@@ -130,16 +131,16 @@ receiveResponse(RequestId) ->
          Reply
    end.
 
--spec receiveTcpData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp()) -> requestRet() | {error, term()}.
-receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn) ->
+-spec receiveTcpData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp(), boolean()) -> requestRet() | {error, term()}.
+receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod) ->
    receive
       {tcp, Socket, Data} ->
-         io:format("IMY*******************************  ~p ~n ",[Data]),
-         try agHttpProtocol:response(RecvState, Rn, RnRn, Data) of
+         io:format("IMY*******************************  ~p ~n ", [Data]),
+         try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
             {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, headers = Headers, body = Body}} ->
-               #requestRet{statusCode = StatusCode, contentLength = ContentLength, headers= Headers, body = Body};
+               #requestRet{statusCode = StatusCode, contentLength = ContentLength, headers = Headers, body = Body};
             {ok, NewRecvState} ->
-               receiveTcpData(NewRecvState, Socket, TimerRef, Rn, RnRn);
+               receiveTcpData(NewRecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod);
             {error, Reason} ->
                ?WARN(receiveTcpData, "handle tcp data error: ~p ~n", [Reason]),
                disConnectDb(Socket),
@@ -160,15 +161,15 @@ receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn) ->
          {error, {tcp_error, Reason}}
    end.
 
--spec receiveSslData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp()) -> requestRet() | {error, term()}.
-receiveSslData(RecvState, Socket, TimerRef, Rn, RnRn) ->
+-spec receiveSslData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp(), boolean()) -> requestRet() | {error, term()}.
+receiveSslData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod) ->
    receive
       {ssl, Socket, Data} ->
-         try agHttpProtocol:response(RecvState, Rn, RnRn, Data) of
+         try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
             {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, body = Body}} ->
                #requestRet{statusCode = StatusCode, contentLength = ContentLength, body = Body};
             {ok, NewRecvState} ->
-               receiveTcpData(NewRecvState, Socket, TimerRef, Rn, RnRn);
+               receiveTcpData(NewRecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod);
             {error, Reason} ->
                ?WARN(receiveSslData, "handle tcp data error: ~p ~n", [Reason]),
                disConnectDb(Socket),
@@ -201,7 +202,7 @@ startPool(PoolName, DbCfgs, AgencyCfgs) ->
 stopPool(PoolName) ->
    agAgencyPoolMgrIns:stopPool(PoolName).
 
--spec connectDb(dbCfgs()) -> {ok, socket()} | error.
+-spec connectDb(dbCfgs()) -> {ok, socket()} | {error, term()}.
 connectDb(DbCfgs) ->
    #dbOpts{
       host = Host,
@@ -240,6 +241,7 @@ connectDb(DbCfgs) ->
          Err
    end.
 
+-spec disConnectDb(socket()) -> ok | {error, term()}.
 disConnectDb(Socket) ->
    case erlang:erase({'$agDbInfo', Socket}) of
       undefined ->
@@ -253,12 +255,15 @@ disConnectDb(Socket) ->
          end
    end.
 
+-spec setCurDbInfo(socket(), binary(), tuple(), host(), protocol()) -> term().
 setCurDbInfo(Socket, DbName, UserPassword, Host, Protocol) ->
    erlang:put({'$agDbInfo', Socket}, {DbName, UserPassword, Host, Protocol}).
 
+-spec getCurDbInfo(socket()) -> term().
 getCurDbInfo(Socket) ->
    erlang:get({'$agDbInfo', Socket}).
 
+-spec setCurDbName(socket(), binary()) -> ok.
 setCurDbName(Socket, NewDbName) ->
    case erlang:get({'$agDbInfo', Socket}) of
       undefined ->

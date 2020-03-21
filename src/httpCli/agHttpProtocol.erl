@@ -7,8 +7,8 @@
 -export([
    headers/1
    , request/7
-   , response/1
-   , response/4
+   , response/2
+   , response/5
 ]).
 
 %% <<"Content-Type: application/json; charset=utf-8">>,
@@ -45,12 +45,12 @@ request(true, Body, Method, Host, _DbName, Path, Headers) ->
    ].
 
 
--spec response(binary()) -> {ok, recvState(), binary()} | error().
-response(Data) ->
-   response(undefined, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>), Data).
+-spec response(binary(), boolean()) -> {ok, recvState(), binary()} | error().
+response(Data, IsHeadMethod) ->
+   response(undefined, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>), Data, IsHeadMethod).
 
--spec response(undefined | recvState(), binary:cp(), binary:cp(), binary()) -> {ok, recvState()} | error().
-response(undefined, Rn, RnRn, Data) ->
+-spec response(undefined | recvState(), binary:cp(), binary:cp(), binary(), boolean()) -> {ok, recvState()} | error().
+response(undefined, Rn, RnRn, Data, IsHeadMethod) ->
    case parseStatusLine(Data, Rn) of
       {StatusCode, Rest} ->
          case splitHeaders(Rest, Rn, RnRn) of
@@ -59,8 +59,13 @@ response(undefined, Rn, RnRn, Data) ->
             {0, Headers, Rest} ->
                {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = Rest}};
             {chunked, Headers, Body} ->
-               RecvState = #recvState{stage = body, contentLength = chunked, statusCode = StatusCode, headers = Headers},
-               response(RecvState, Rn, RnRn, Body);
+               case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode >= 100 andalso StatusCode < 200) of
+                  true ->
+                     {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = Rest}};
+                  _ ->
+                     RecvState = #recvState{stage = body, contentLength = chunked, statusCode = StatusCode, headers = Headers},
+                     response(RecvState, Rn, RnRn, Body, IsHeadMethod)
+               end;
             {ContentLength, Headers, Body} ->
                BodySize = erlang:size(Body),
                if
@@ -70,7 +75,12 @@ response(undefined, Rn, RnRn, Data) ->
                      ?WARN(agTcpAgencyIns, "11 contentLength get to long data why? more: ~p ~n", [BodySize - ContentLength]),
                      {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
                   true ->
-                     {ok, #recvState{stage = body, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}}
+                     case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode >= 100 andalso StatusCode < 200) of
+                        true ->
+                           {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
+                        _ ->
+                           {ok, #recvState{stage = body, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}}
+                     end
                end;
             not_enough_data ->
                %% headers都不足 这也可以能发生么
@@ -82,7 +92,7 @@ response(undefined, Rn, RnRn, Data) ->
       {error, Reason} ->
          {error, Reason}
    end;
-response(#recvState{stage = body, contentLength = chunked, body = Body, buffer = Buffer} = RecvState, Rn, _RnRn, Data) ->
+response(#recvState{stage = body, contentLength = chunked, body = Body, buffer = Buffer} = RecvState, Rn, _RnRn, Data, _IsHeadMethod) ->
    NewBuffer = <<Buffer/binary, Data/binary>>,
    case parseChunks(NewBuffer, Rn, []) of
       {ok, AddBody, _Rest} ->
@@ -94,7 +104,7 @@ response(#recvState{stage = body, contentLength = chunked, body = Body, buffer =
       {error, Reason} ->
          {error, Reason}
    end;
-response(#recvState{stage = body, contentLength = ContentLength, body = Body} = RecvState, _Rn, _RnRn, Data) ->
+response(#recvState{stage = body, contentLength = ContentLength, body = Body} = RecvState, _Rn, _RnRn, Data, _IsHeadMethod) ->
    CurData = <<Body/binary, Data/binary>>,
    BodySize = erlang:size(CurData),
    if
@@ -106,7 +116,7 @@ response(#recvState{stage = body, contentLength = ContentLength, body = Body} = 
       true ->
          {ok, RecvState#recvState{body = CurData}}
    end;
-response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data) ->
+response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data, IsHeadMethod) ->
    CurBody = <<OldBody/binary, Data/binary>>,
    case parseStatusLine(CurBody, Rn) of
       {StatusCode, Rest} ->
@@ -116,8 +126,13 @@ response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data) ->
             {0, Headers, Body} ->
                {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = Body}};
             {chunked, Headers, Rest} ->
-               RecvState = #recvState{stage = body, contentLength = chunked, statusCode = StatusCode, headers = Headers},
-               response(RecvState, Rn, RnRn, Rest);
+               case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode >= 100 andalso StatusCode < 200) of
+                  true ->
+                     {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = Rest}};
+                  _ ->
+                     RecvState = #recvState{stage = body, contentLength = chunked, statusCode = StatusCode, headers = Headers},
+                     response(RecvState, Rn, RnRn, Rest, IsHeadMethod)
+               end;
             {ContentLength, Headers, Body} ->
                BodySize = erlang:size(Body),
                if
@@ -127,7 +142,12 @@ response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data) ->
                      ?WARN(agTcpAgencyIns, "33 contentLength get to long data why? more: ~p ~n", [BodySize - ContentLength]),
                      {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
                   true ->
-                     {ok, #recvState{stage = body, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}}
+                     case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode >= 100 andalso StatusCode < 200) of
+                        true ->
+                           {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
+                        _ ->
+                           {ok, #recvState{stage = body, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}}
+                     end
                end;
             not_enough_data ->
                %% headers都不足 这也可以能发生么

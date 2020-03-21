@@ -22,6 +22,7 @@ parseUrl(<<"https://", Rest/binary>>) ->
 parseUrl(_) ->
    {error, invalid_url}.
 
+-spec parseUrl(protocol(), binary()) -> dbOpts().
 parseUrl(Protocol, Rest) ->
    {Host, _Path} =
       case binary:split(Rest, <<"/">>, [trim]) of
@@ -45,6 +46,7 @@ parseUrl(Protocol, Rest) ->
       end,
    #dbOpts{host = Host, port = Port, hostname = binary_to_list(Hostname), protocol = Protocol}.
 
+-spec dbOpts(list()) -> dbOpts().
 dbOpts(DbCfgs) ->
    BaseUrl = ?GET_FROM_LIST(baseUrl, DbCfgs, ?DEFAULT_BASE_URL),
    DbName = ?GET_FROM_LIST(dbName, DbCfgs, ?DEFAULT_DBNAME),
@@ -52,9 +54,10 @@ dbOpts(DbCfgs) ->
    PoolSize = ?GET_FROM_LIST(poolSize, DbCfgs, ?DEFAULT_POOL_SIZE),
    SocketOpts = ?GET_FROM_LIST(socketOpts, DbCfgs, ?DEFAULT_SOCKET_OPTS),
    DbOpts = agMiscUtils:parseUrl(BaseUrl),
-   UserPasswordBase64 = <<"Basic ", (base64:encode(UserPassword))/binary>>,
+   UserPasswordBase64 = {<<"Authorization">>, <<"Basic ", (base64:encode(UserPassword))/binary>>},
    DbOpts#dbOpts{dbName = DbName, userPassword = UserPasswordBase64, poolSize = PoolSize, socketOpts = SocketOpts}.
 
+-spec agencyOpts(list()) -> agencyOpts().
 agencyOpts(AgencyCfgs) ->
    IsReconnect = ?GET_FROM_LIST(reconnect, AgencyCfgs, ?DEFAULT_IS_RECONNECT),
    BacklogSize = ?GET_FROM_LIST(backlogSize, AgencyCfgs, ?DEFAULT_BACKLOG_SIZE),
@@ -62,7 +65,7 @@ agencyOpts(AgencyCfgs) ->
    Max = ?GET_FROM_LIST(reconnectTimeMax, AgencyCfgs, ?DEFAULT_RECONNECT_MAX),
    #agencyOpts{reconnect = IsReconnect, backlogSize = BacklogSize, reconnectTimeMin = Min, reconnectTimeMax = Max}.
 
-
+-spec getListValue(term(), list(), term()) -> term().
 getListValue(Key, List, Default) ->
    case lists:keyfind(Key, 1, List) of
       false ->
@@ -82,6 +85,7 @@ randomElement([_ | _] = List) ->
    T = list_to_tuple(List),
    element(rand:uniform(tuple_size(T)), T).
 
+-spec toBinary(term()) -> binary().
 toBinary(Value) when is_integer(Value) -> integer_to_binary(Value);
 toBinary(Value) when is_list(Value) -> list_to_binary(Value);
 toBinary(Value) when is_float(Value) -> float_to_binary(Value, [{decimals, 6}, compact]);

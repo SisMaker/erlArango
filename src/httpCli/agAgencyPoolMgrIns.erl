@@ -43,6 +43,11 @@ handleMsg(_Msg, State) ->
    {ok, State}.
 
 terminate(_Reason, _State) ->
+   io:format("IMY******************* agAgencyPoolMgrIns terminate ~p~n ", [_Reason]),
+   ets:delete_all_objects(?ETS_AG_Pool),
+   ets:delete_all_objects(?ETS_AG_Agency),
+   agKvsToBeam:load(?agBeamPool, []),
+   agKvsToBeam:load(?agBeamAgency, []),
    ok.
 
 -spec startPool(poolName(), dbCfgs()) -> ok | {error, pool_name_used}.
@@ -152,6 +157,7 @@ cacheDelAgency(PoolName) ->
    agKvsToBeam:load(?agBeamAgency, KVS),
    ok.
 
+-spec getOneAgency(atom()) -> atom() | {error, term()}.
 getOneAgency(PoolName) ->
    case ?agBeamPool:get(PoolName) of
       undefined ->

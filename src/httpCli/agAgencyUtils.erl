@@ -14,29 +14,34 @@
    , reconnectTimer/2
    , agencyReply/2
    , agencyReply/4
-   , agencyReplyAll/1
    , initReconnectState/3
    , resetReconnectState/1
    , updateReconnectState/1
 ]).
 
+-spec getQueue(pos_integer()) -> undefined | miRequest().
 getQueue(RequestsIn) ->
    erlang:get(RequestsIn).
 
+-spec addQueue(pos_integer(), miRequest()) -> undefined.
 addQueue(RequestsIn, MiRequest) ->
    erlang:put(RequestsIn, MiRequest).
 
+-spec delQueue(pos_integer()) -> miRequest().
 delQueue(RequestsIn) ->
    erlang:erase(RequestsIn).
 
+-spec clearQueue() -> term().
 clearQueue() ->
    erlang:erase().
 
-dealClose(SrvState,  #cliState{curInfo = CurInfo} = ClientState, Reply) ->
-   agAgencyUtils:agencyReply(CurInfo, Reply),
-   agAgencyUtils:agencyReplyAll(Reply),
-   reconnectTimer(SrvState, ClientState).
+-spec dealClose(srvState(), cliState(), term()) -> {ok, srvState(), cliState()}.
+dealClose(SrvState, #cliState{curInfo = CurInfo} = ClientState, Reply) ->
+   agencyReply(CurInfo, Reply),
+   agencyReplyAll(Reply),
+   reconnectTimer(SrvState, ClientState#cliState{requestsIn = 1, requestsOut = 0, backlogNum = 0}).
 
+-spec reconnectTimer(srvState(), cliState()) -> {ok, srvState(), cliState()}.
 reconnectTimer(#srvState{reconnectState = undefined} = SrvState, CliState) ->
    {ok, {SrvState#srvState{socket = undefined}, CliState}};
 reconnectTimer(#srvState{reconnectState = ReconnectState} = SrvState, CliState) ->

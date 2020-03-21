@@ -5,7 +5,7 @@
 
 start() ->
    application:ensure_all_started(erlArango),
-   agHttpCli:startPool(tt, [{poolSize, 100}], []).
+   agHttpCli:startPool(tt, [{poolSize, 10}], []).
 
 tt(C, N) ->
    application:start(erlArango),

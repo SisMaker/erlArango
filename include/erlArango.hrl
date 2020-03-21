@@ -4,4 +4,5 @@
 -define(Get, <<"GET">>).
 -define(Put, <<"PUT">>).
 -define(Post, <<"POST">>).
+-define(Head, <<"HEAD">>).
 -define(Delete, <<"DELETE">>).

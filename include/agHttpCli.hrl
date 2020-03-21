@@ -7,21 +7,13 @@
 -define(DEFAULT_DBNAME, <<"_db/_system">>).
 -define(USER_PASSWORD, <<"root:156736">>).
 -define(DEFAULT_BACKLOG_SIZE, 1024).
--define(DEFAULT_INIT_OPTS, undefined).
 -define(DEFAULT_CONNECT_TIMEOUT, 5000).
 -define(DEFAULT_POOL_SIZE, 16).
--define(DEFAULT_POOL_STRATEGY, random).
--define(DEFAULT_POOL_OPTIONS, []).
 -define(DEFAULT_IS_RECONNECT, true).
--define(DEFAULT_RECONNECT_MAX, 120000).
 -define(DEFAULT_RECONNECT_MIN, 500).
+-define(DEFAULT_RECONNECT_MAX, 120000).
 -define(DEFAULT_TIMEOUT, infinity).
--define(DEFAULT_BODY, undefined).
--define(DEFAULT_HEADERS, []).
 -define(DEFAULT_PID, self()).
--define(DEFAULT_PROTOCOL, tcp).
--define(DEFAULT_PORTO(Protocol), 8529).
-%%-define(DEFAULT_PORTO(Protocol), case Protocol of tcp -> 80; _ -> 443 end).
 -define(DEFAULT_SOCKET_OPTS, [binary, {active, true}, {delay_send, true}, {nodelay, true}, {keepalive, true}, {recbuf, 1048576}, {send_timeout, 5000}, {send_timeout_close, true}]).
 
 -define(GET_FROM_LIST(Key, List), agMiscUtils:getListValue(Key, List, undefined)).
@@ -49,6 +41,7 @@
 -record(requestRet, {
    statusCode :: undefined | 100..505,
    contentLength :: undefined | non_neg_integer() | chunked,
+   headers :: undefined | [binary()],
    body :: undefined | binary()
 }).
 
@@ -67,25 +60,40 @@
    current :: non_neg_integer() | undefined
 }).
 
+-record(srvState, {
+   poolName :: poolName(),
+   serverName :: serverName(),
+   userPassWord :: binary(),
+   host :: binary(),
+   dbName :: binary(),
+   rn :: binary:cp(),
+   rnrn :: binary:cp(),
+   reconnectState :: undefined | reconnectState(),
+   socket :: undefined | ssl:sslsocket(),
+   timerRef :: undefined | reference()
+}).
+
 -record(cliState, {
+   isHeadMethod = false :: boolean(),           %% 是否是<<"HEAD">>请求方法
+   %method = undefined :: undefined | method(),
    requestsIn = 1 :: non_neg_integer(),
    requestsOut = 0 :: non_neg_integer(),
-   status = leisure :: waiting | leisure,
    backlogNum = 0 :: integer(),
    backlogSize = 0 :: integer(),
+   status = leisure :: waiting | leisure,
    curInfo = undefined :: tuple(),
-   recvState :: recvState() | undefined
+   recvState = undefined :: recvState() | undefined
 }).
 
 -record(dbOpts, {
    host :: host(),
    port :: 0..65535,
-   hostname :: string(),
+   hostname :: hostName(),
    dbName :: binary(),
    protocol :: protocol(),
    poolSize :: binary(),
    userPassword :: binary(),
-   socketOpts :: [gen_tcp:connect_option(), ...]
+   socketOpts :: socketOpts()
 }).
 
 -record(agencyOpts, {
@@ -99,6 +107,7 @@
 -type miAgHttpCliRet() :: #miAgHttpCliRet{}.
 -type requestRet() :: #requestRet{}.
 -type recvState() :: #recvState{}.
+-type srvState() :: #srvState{}.
 -type cliState() :: #cliState{}.
 -type reconnectState() :: #reconnectState{}.
 
@@ -111,26 +120,26 @@
 -type body() :: iodata() | undefined.
 -type path() :: binary().
 -type host() :: binary().
+-type hostName() :: string().
 -type poolSize() :: pos_integer().
 -type backlogSize() :: pos_integer() | infinity.
 -type requestId() :: {serverName(), reference()}.
--type externalRequestId() :: term().
--type response() :: {externalRequestId(), term()}.
 -type socket() :: inet:socket() | ssl:sslsocket().
+-type socketOpts() :: [gen_tcp:connect_option(), ...].
 -type error() :: {error, term()}.
 
 -type dbCfg() ::
-{baseUrl, binary()} |
-{dbName, binary()} |
-{userPassword, binary()} |
-{poolSize, poolSize()} |
-{socketOpts, [gen_tcp:connect_option(), ...]}.
+   {baseUrl, binary()} |
+   {dbName, binary()} |
+   {userPassword, binary()} |
+   {poolSize, poolSize()} |
+   {socketOpts, [gen_tcp:connect_option(), ...]}.
 
 -type agencyCfg() ::
-{reconnect, boolean()} |
-{backlogSize, backlogSize()} |
-{reconnectTimeMin, pos_integer()} |
-{reconnectTimeMax, pos_integer()}.
+   {reconnect, boolean()} |
+   {backlogSize, backlogSize()} |
+   {reconnectTimeMin, pos_integer()} |
+   {reconnectTimeMax, pos_integer()}.
 
 -type dbCfgs() :: [dbCfg()].
 -type dbOpts() :: #dbOpts{}.

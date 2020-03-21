@@ -1,5 +1,6 @@
 -module(agSslAgencyIns).
 -include("agHttpCli.hrl").
+-include("erlArango.hrl").
 
 -compile(inline).
 -compile({inline_size, 128}).
@@ -34,7 +35,7 @@ handleMsg(#miRequest{method = Method, path = Path, headers = Headers, body = Bod
             _ ->
                case Status of
                   leisure -> %% 空闲模式
-                     Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [{<<"Authorization">>, UserPassWord} | Headers]),
+                     Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [UserPassWord | Headers]),
                      case ssl:send(Socket, Request) of
                         ok ->
                            TimerRef =
@@ -44,7 +45,7 @@ handleMsg(#miRequest{method = Method, path = Path, headers = Headers, body = Bod
                                  _ ->
                                     erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                               end,
-                           {ok, SrvState, CliState#cliState{status = waiting, backlogNum = BacklogNum + 1, curInfo = {FromPid, RequestId, TimerRef}}};
+                           {ok, SrvState, CliState#cliState{isHeadMethod = Method == ?Head, status = waiting, backlogNum = BacklogNum + 1, curInfo = {FromPid, RequestId, TimerRef}}};
                         {error, Reason} ->
                            ?WARN(ServerName, ":send error: ~p ~p ~p ~n", [Reason, FromPid, RequestId]),
                            ssl:close(Socket),
@@ -59,8 +60,8 @@ handleMsg(#miRequest{method = Method, path = Path, headers = Headers, body = Bod
    end;
 handleMsg({ssl, Socket, Data},
    #srvState{serverName = ServerName, rn = Rn, rnrn = RnRn, socket = Socket} = SrvState,
-   #cliState{backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
-   try agHttpProtocol:response(RecvState, Rn, RnRn, Data) of
+   #cliState{isHeadMethod = IsHeadMethod, backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
+   try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
       {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, body = Body}} ->
          agAgencyUtils:agencyReply(CurInfo, #requestRet{statusCode = StatusCode, contentLength = ContentLength, body = Body}),
          case agAgencyUtils:getQueue(RequestsOut + 1) of
@@ -166,7 +167,7 @@ dealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers, bod
                dealQueueRequest(MiRequest, SrvState, CliState#cliState{requestsOut = RequestsOut + 1})
          end;
       _ ->
-         Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [{<<"Authorization">>, UserPassWord} | Headers]),
+         Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [UserPassWord | Headers]),
          case ssl:send(Socket, Request) of
             ok ->
                TimerRef =
@@ -176,7 +177,7 @@ dealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers, bod
                      _ ->
                         erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                   end,
-               {ok, SrvState, CliState#cliState{status = waiting, requestsOut = RequestsOut + 1, curInfo = {FromPid, RequestId, TimerRef}}};
+               {ok, SrvState, CliState#cliState{isHeadMethod = Method == ?Head, status = waiting, requestsOut = RequestsOut + 1, curInfo = {FromPid, RequestId, TimerRef}}};
             {error, Reason} ->
                ?WARN(ServerName, ":send error: ~p~n", [Reason]),
                ssl:close(Socket),
