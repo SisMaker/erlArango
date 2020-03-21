@@ -39,7 +39,7 @@ clearQueue() ->
 dealClose(SrvState, #cliState{curInfo = CurInfo} = ClientState, Reply) ->
    agencyReply(CurInfo, Reply),
    agencyReplyAll(Reply),
-   reconnectTimer(SrvState, ClientState#cliState{requestsIn = 1, requestsOut = 0, backlogNum = 0}).
+   reconnectTimer(SrvState, ClientState#cliState{requestsIn = 1, requestsOut = 0, backlogNum = 0, status = leisure, curInfo = undefined, recvState = undefined}).
 
 -spec reconnectTimer(srvState(), cliState()) -> {ok, srvState(), cliState()}.
 reconnectTimer(#srvState{reconnectState = undefined} = SrvState, CliState) ->
