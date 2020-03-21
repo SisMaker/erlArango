@@ -158,7 +158,10 @@ receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod) ->
          {error, tcp_closed};
       {tcp_error, Socket, Reason} ->
          disConnectDb(Socket),
-         {error, {tcp_error, Reason}}
+         {error, {tcp_error, Reason}};
+      _Msg ->
+         ?WARN(receiveTcpData, "receive unexpect msg: ~p~n", [_Msg]),
+         receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod)
    end.
 
 -spec receiveSslData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp(), boolean()) -> requestRet() | {error, term()}.
@@ -187,7 +190,10 @@ receiveSslData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod) ->
          {error, ssl_closed};
       {ssl_error, Socket, Reason} ->
          disConnectDb(Socket),
-         {error, {ssl_error, Reason}}
+         {error, {ssl_error, Reason}};
+      _Msg ->
+         ?WARN(receiveSslData, "receive unexpect msg: ~p~n", [_Msg]),
+         receiveSslData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod)
    end.
 
 -spec startPool(poolName(), dbCfgs()) -> ok | {error, pool_name_used}.

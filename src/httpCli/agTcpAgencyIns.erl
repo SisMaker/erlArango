@@ -130,30 +130,27 @@ handleMsg(Msg, #srvState{serverName = ServerName} = SrvState, CliState) ->
 
 -spec terminate(term(), srvState(), cliState()) -> ok.
 terminate(_Reason,
-   #srvState{socket = Socket, timerRef = TimerRef} = SrvState,
-   #cliState{requestsOut = RequestsOut, status = Status} = CliState) ->
+   #srvState{socket = Socket} = SrvState,
+   CliState) ->
    io:format("IMY*******************terminate  ~p~n", [_Reason]),
    {ok, NewSrvState, NewCliState} = overAllWork(SrvState, CliState),
    gen_tcp:close(Socket),
-   agAgencyUtils:cancelTimer(TimerRef),
    agAgencyUtils:dealClose(NewSrvState, NewCliState, {error, shutdown}),
    ok.
 
--spec overAllWork(srvState(), cliState()) -> ok.
-overAllWork(#srvState{serverName = ServerName, rn = Rn, rnrn = RnRn, socket = Socket, timerRef = TimerRef} = SrvState,
-   #cliState{isHeadMethod = IsHeadMethod, backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState, status = Status} = CliState) ->
+-spec overAllWork(srvState(), cliState()) -> {ok, srvState(), cliState()}.
+overAllWork(SrvState, #cliState{requestsOut = RequestsOut, status = Status} = CliState) ->
    case Status of
       leisure ->
          case agAgencyUtils:getQueue(RequestsOut + 1) of
             undefined ->
-               ok;
+               {ok, SrvState, CliState};
             MiRequest ->
                overDealQueueRequest(MiRequest, SrvState, CliState)
          end;
       _ ->
          overReceiveTcpData(SrvState, CliState)
-   end,
-   ok.
+   end.
 
 -spec overDealQueueRequest(miRequest(), srvState(), cliState()) -> {ok, srvState(), cliState()}.
 overDealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers, body = Body, requestId = RequestId, fromPid = FromPid, overTime = OverTime, isSystem = IsSystem},
@@ -166,7 +163,7 @@ overDealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers,
          agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),
          case agAgencyUtils:getQueue(RequestsOut + 2) of
             undefined ->
-               ok;
+               {ok, SrvState, CliState#cliState{requestsOut = RequestsOut + 1, backlogNum = BacklogNum - 1}};
             MiRequest ->
                overDealQueueRequest(MiRequest, SrvState, CliState#cliState{requestsOut = RequestsOut + 1, backlogNum = BacklogNum - 1})
          end;
@@ -190,8 +187,7 @@ overDealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers,
          end
    end.
 
-
--spec overReceiveTcpData(srvState(), cliState()) -> term().
+-spec overReceiveTcpData(srvState(), cliState()) -> {ok, srvState(), cliState()}.
 overReceiveTcpData(#srvState{poolName = PoolName, serverName = ServerName, rn = Rn, rnrn = RnRn, socket = Socket} = SrvState,
    #cliState{isHeadMethod = IsHeadMethod, backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
    receive
@@ -201,8 +197,7 @@ overReceiveTcpData(#srvState{poolName = PoolName, serverName = ServerName, rn = 
                agAgencyUtils:agencyReply(CurInfo, #requestRet{statusCode = StatusCode, contentLength = ContentLength, headers = Headers, body = Body}),
                case agAgencyUtils:getQueue(RequestsOut + 1) of
                   undefined ->
-                     %% todo bug fix
-                     ok;
+                     {ok, SrvState, CliState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined, recvState = undefined}};
                   MiRequest ->
                      overDealQueueRequest(MiRequest, SrvState, CliState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined, recvState = undefined})
                end;
@@ -216,40 +211,44 @@ overReceiveTcpData(#srvState{poolName = PoolName, serverName = ServerName, rn = 
             E:R:S ->
                ?WARN(overReceiveTcpData, "handle tcp data crash: ~p:~p~n~p ~n ", [E, R, S]),
                gen_tcp:close(Socket),
-               agAgencyUtils:dealClose(SrvState, CliState, {error, {tcp_error, handledata_error}}),
-               ok
+               agAgencyUtils:dealClose(SrvState, CliState, {error, {tcp_error, handledata_error}})
          end;
-      {timeout, _TimerRef, waiting_over} ->
-         gen_tcp:close(Socket),
-         agAgencyUtils:agencyReply(CurInfo, {error, timeout}),
-         case agAgencyUtils:getQueue(RequestsOut + 1) of
-            undefined ->
-               ok;
-            MiRequest ->
-               case ?agBeamPool:get(PoolName) of
-                  #dbOpts{port = Port, hostname = HostName, socketOpts = SocketOpts} ->
-                     case dealConnect(ServerName, HostName, Port, SocketOpts) of
-                        {ok, NewSocket} ->
-                           %% 新建连接之后 需要重置之前的buff之类状态数据
-                           NewCliState = CliState#cliState{status = leisure, recvState = undefined, curInfo = undefined},
-                           overDealQueueRequest(MiRequest, SrvState#srvState{socket = NewSocket}, NewCliState);
-                        {error, _Reason} ->
-                           agAgencyUtils:dealClose(SrvState, CliState, {error, {new_tcp_connect_error_over, _Reason}}),
-                           ok
-                     end;
-                  _Ret ->
-                     agAgencyUtils:dealClose(SrvState, CliState, {error, {not_found_poolName, PoolName}}),
-                     ok
-               end
+      {timeout, TimerRef, waiting_over} ->
+         case CurInfo of
+            {_PidForm, _RequestId, TimerRef} ->
+               gen_tcp:close(Socket),
+               agAgencyUtils:agencyReply(CurInfo, {error, timeout}),
+               case agAgencyUtils:getQueue(RequestsOut + 1) of
+                  undefined ->
+                     {ok, SrvState, CliState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined, recvState = undefined}};
+                  MiRequest ->
+                     case ?agBeamPool:get(PoolName) of
+                        #dbOpts{port = Port, hostname = HostName, socketOpts = SocketOpts} ->
+                           case dealConnect(ServerName, HostName, Port, SocketOpts) of
+                              {ok, NewSocket} ->
+                                 %% 新建连接之后 需要重置之前的buff之类状态数据
+                                 NewCliState = CliState#cliState{status = leisure, recvState = undefined, curInfo = undefined},
+                                 overDealQueueRequest(MiRequest, SrvState#srvState{socket = NewSocket}, NewCliState);
+                              {error, _Reason} ->
+                                 agAgencyUtils:dealClose(SrvState, CliState, {error, {new_tcp_connect_error_over, _Reason}})
+                           end;
+                        _Ret ->
+                           agAgencyUtils:dealClose(SrvState, CliState, {error, {not_found_poolName, PoolName}})
+                     end
+               end;
+            _ ->
+               ?WARN(overReceiveTcpData, "receive waiting_over TimerRef not match: ~p~n", [TimerRef]),
+               overReceiveTcpData(SrvState, CliState)
          end;
       {tcp_closed, Socket} ->
          gen_tcp:close(Socket),
-         agAgencyUtils:dealClose(SrvState, CliState, {error, tcp_closed}),
-         ok;
+         agAgencyUtils:dealClose(SrvState, CliState, {error, tcp_closed});
       {tcp_error, Socket, Reason} ->
          gen_tcp:close(Socket),
-         agAgencyUtils:dealClose(SrvState, CliState, {error, {tcp_error, Reason}}),
-         ok
+         agAgencyUtils:dealClose(SrvState, CliState, {error, {tcp_error, Reason}});
+      _Msg ->
+         ?WARN(overReceiveTcpData, "receive unexpect msg: ~p~n", [_Msg]),
+         overReceiveTcpData(SrvState, CliState)
    end.
 
 -spec dealConnect(atom(), hostName(), port(), socketOpts()) -> {ok, socket()} | {error, term()}.
@@ -280,7 +279,7 @@ dealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers, bod
          agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),
          case agAgencyUtils:getQueue(RequestsOut + 2) of
             undefined ->
-               {ok, SrvState, CliState#cliState{requestsOut = RequestsOut + 1}};
+               {ok, SrvState, CliState#cliState{requestsOut = RequestsOut + 1, backlogNum = BacklogNum - 1}};
             MiRequest ->
                dealQueueRequest(MiRequest, SrvState, CliState#cliState{requestsOut = RequestsOut + 1, backlogNum = BacklogNum - 1})
          end;
