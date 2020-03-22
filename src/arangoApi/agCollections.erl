@@ -79,7 +79,7 @@ newColl(PoolNameOrSocket, MapData) ->
 
 newColl(PoolNameOrSocket, MapData, WaitForSyncReplication, ForceReplicationFactor) ->
    BodyStr = jiffy:encode(MapData),
-   Path = <<"/_api/collection?waitForSyncReplication=", (erlang:integer_to_binary(WaitForSyncReplication))/binary, "&forceReplicationFactor=", (erlang:integer_to_binary(ForceReplicationFactor))/binary>>,
+   Path = <<"/_api/collection?waitForSyncReplication=", (agMiscUtils:toBinary(WaitForSyncReplication))/binary, "&forceReplicationFactor=", (agMiscUtils:toBinary(ForceReplicationFactor))/binary>>,
    agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
 
 % 删除集合
@@ -229,7 +229,7 @@ collChecksum(PoolNameOrSocket, CollName, IsWithRevisions, IsWithData) ->
          Path = <<"/_api/collection/", CollName/binary, "/checksum">>,
          agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined);
       _ ->
-         Path = <<"/_api/collection/", CollName/binary, "/checksum?withRevisions=", (erlang:atom_to_binary(IsWithRevisions, utf8))/binary, "&withData=", (erlang:atom_to_binary(IsWithRevisions, utf8))/binary>>,
+         Path = <<"/_api/collection/", CollName/binary, "/checksum?withRevisions=", (agMiscUtils:toBinary(IsWithRevisions, utf8))/binary, "&withData=", (erlang:atom_to_binary(IsWithRevisions, utf8))/binary>>,
          agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined)
    end.
 

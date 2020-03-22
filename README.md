@@ -1,5 +1,6 @@
 # erlArango
     arangodb多模数据库erlang驱动程序
+    erlang otp21.2+ 基于arangodb3.6.2http文档
     
 ## 特点
   高效，快速，简单易用。
