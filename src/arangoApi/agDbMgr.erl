@@ -40,8 +40,8 @@ curDbList(PoolNameOrSocket) ->
 %     active：一个标志，指示是否应该激活用户帐户。默认值为true。如果设置为false，则用户将无法登录数据库。
 %     extra：带有额外用户信息的JSON对象。Extra中包含的数据 将为用户存储，但ArangoDB不会进一步解释。
 
-newDb(PoolNameOrSocket, Args) ->
-   BodyStr = jiffy:encode(Args),
+newDb(PoolNameOrSocket, MapData) ->
+   BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/database">>, [], BodyStr, true).
 
 %% 删除现有数据库

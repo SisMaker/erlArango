@@ -73,12 +73,12 @@
 %  用给定名称创建一个新集合。该请求必须包含具有以下属性的对象。
 %  400：如果缺少集合名称，则返回HTTP 400。
 %  404：如果集合名称未知，则返回HTTP 404。
-newColl(PoolNameOrSocket, Args) ->
-   BodyStr = jiffy:encode(Args),
+newColl(PoolNameOrSocket, MapData) ->
+   BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/collection">>, [], BodyStr).
 
-newColl(PoolNameOrSocket, Args, WaitForSyncReplication, ForceReplicationFactor) ->
-   BodyStr = jiffy:encode(Args),
+newColl(PoolNameOrSocket, MapData, WaitForSyncReplication, ForceReplicationFactor) ->
+   BodyStr = jiffy:encode(MapData),
    Path = <<"/_api/collection?waitForSyncReplication=", (erlang:integer_to_binary(WaitForSyncReplication))/binary, "&forceReplicationFactor=", (erlang:integer_to_binary(ForceReplicationFactor))/binary>>,
    agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
 
@@ -166,11 +166,11 @@ collFigures(PoolNameOrSocket, CollName) ->
 % 该请求必须正文必须包含一个JSON文档，其中至少将集合的分片键属性设置为某些值。
 % 响应是一个具有shardId属性的JSON对象，其中将包含负责的分片的ID。
 % 注意：此方法仅在群集协调器中可用。
-% eg: args = #{'_key' => testkey, value => 23}
+% eg: MapData = #{'_key' => testkey, value => 23}
 
-collResponsibleShard(PoolNameOrSocket, CollName, Args) ->
+collResponsibleShard(PoolNameOrSocket, CollName, MapData) ->
    Path = <<"/_api/collection/", CollName/binary, "/responsibleShard">>,
-   BodyStr = jiffy:encode(Args),
+   BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], BodyStr).
 
 % 返回集合永久链接的分片 ID
@@ -300,7 +300,7 @@ collLoadIndexesIntoMemory(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/loadIndexesIntoMemory">>,
    agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
 
-% 更改集合的属性固定链接
+% 更改集合的属性
 % PUT /_api/collection/{collection-name}/properties
 % 路径参数
 % collection-name（必填）：集合的名称。
@@ -324,9 +324,9 @@ collLoadIndexesIntoMemory(PoolNameOrSocket, CollName) ->
 % allowUserKeys：如果设置为true，则允许在文档的_key属性中提供自己的键值。如果设置为 false，那么密钥生成器将独自负责生成密钥，并且在文档的_key属性中提供自己的密钥值被视为错误。
 % 注意：除了waitForSync，journalSize和name之外，创建集合后就无法更改集合属性。要重命名集合，必须使用重命名端点。
 
-collChangeProperties(PoolNameOrSocket, CollName, Args) ->
+collChangeProperties(PoolNameOrSocket, CollName, MapData) ->
    Path = <<"/_api/collection/", CollName/binary, "/properties">>,
-   BodyStr = jiffy:encode(Args),
+   BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
 
 % 重命名集合

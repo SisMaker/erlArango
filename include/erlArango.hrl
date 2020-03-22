@@ -5,4 +5,5 @@
 -define(Put, <<"PUT">>).
 -define(Post, <<"POST">>).
 -define(Head, <<"HEAD">>).
+-define(Patch, <<"PATCH">>).
 -define(Delete, <<"DELETE">>).

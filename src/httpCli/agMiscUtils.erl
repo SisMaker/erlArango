@@ -12,6 +12,7 @@
    , getListValue/3
    , randomElement/1
    , toBinary/1
+   , spellQueryPars/1
 ]).
 
 -spec parseUrl(binary()) -> dbOpts() | {error, invalid_url}.
@@ -94,3 +95,13 @@ toBinary(Value) when is_binary(Value) -> Value;
 toBinary([Tuple | PropList] = Value) when is_list(PropList) and is_tuple(Tuple) ->
    lists:map(fun({K, V}) -> {toBinary(K), toBinary(V)} end, Value);
 toBinary(Value) -> term_to_binary(Value).
+
+-spec spellQueryPars(list()) -> binary().
+spellQueryPars([]) ->
+   <<>>;
+spellQueryPars([{Key, Value}]) ->
+   <<"?", (toBinary(Key))/binary, "=", (toBinary(Value))/binary>>;
+spellQueryPars([{Key, Value} | Tail]) ->
+   First = <<"?", (toBinary(Key))/binary, "=", (toBinary(Value))/binary>>,
+   Tail = [<<"&", (toBinary(OtherKey))/binary, "=", (toBinary(OtherValue))/binary>> || {OtherKey, OtherValue} <- Tail],
+   <<First/binary, Tail/binary>>.
