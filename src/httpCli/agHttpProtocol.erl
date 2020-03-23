@@ -59,7 +59,7 @@ response(undefined, Rn, RnRn, Data, IsHeadMethod) ->
             {0, Headers, Rest} ->
                {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = Rest}};
             {chunked, Headers, Body} ->
-               case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode >= 100 andalso StatusCode < 200) of
+               case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode < 200 andalso StatusCode >= 100) of
                   true ->
                      {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = Rest}};
                   _ ->
@@ -75,7 +75,7 @@ response(undefined, Rn, RnRn, Data, IsHeadMethod) ->
                      ?WARN(agTcpAgencyIns, "11 contentLength get to long data why? more: ~p ~n", [BodySize - ContentLength]),
                      {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
                   true ->
-                     case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode >= 100 andalso StatusCode < 200) of
+                     case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode < 200 andalso StatusCode >= 100) of
                         true ->
                            {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
                         _ ->
@@ -126,7 +126,7 @@ response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data, IsHeadMetho
             {0, Headers, Body} ->
                {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = Body}};
             {chunked, Headers, Rest} ->
-               case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode >= 100 andalso StatusCode < 200) of
+               case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode < 200 andalso StatusCode >= 100) of
                   true ->
                      {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = Rest}};
                   _ ->
@@ -142,7 +142,7 @@ response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data, IsHeadMetho
                      ?WARN(agTcpAgencyIns, "33 contentLength get to long data why? more: ~p ~n", [BodySize - ContentLength]),
                      {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
                   true ->
-                     case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode >= 100 andalso StatusCode < 200) of
+                     case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode < 200 andalso StatusCode >= 100) of
                         true ->
                            {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
                         _ ->

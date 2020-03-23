@@ -14,7 +14,7 @@
    , castAgency/6
    , castAgency/7
    , castAgency/8
-   , receiveResponse/1
+   , receiveResponse/2
 
    %% 连接池API
    , startPool/2
@@ -40,8 +40,8 @@ callAgency(PoolNameOrSocket, Method, Path, Headers, Body, IsSystem) ->
 -spec callAgency(poolNameOrSocket(), method(), path(), headers(), body(), boolean(), timeout()) -> term() | {error, atom()}.
 callAgency(PoolNameOrSocket, Method, Path, Headers, Body, IsSystem, Timeout) ->
    case castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), IsSystem, Timeout) of
-      {ok, RequestId} ->
-         receiveResponse(RequestId);
+      {ok, RequestId, MonitorRef} ->
+         receiveResponse(RequestId, MonitorRef);
       {error, _Reason} = Err ->
          Err;
       Ret ->
@@ -76,9 +76,10 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
             undefined ->
                {error, undefined_server};
             AgencyName ->
-               RequestId = {AgencyName, make_ref()},
+               MonitorRef = erlang:monitor(process, AgencyName),
+               RequestId = {AgencyName, MonitorRef},
                catch AgencyName ! #miRequest{method = Method, path = Path, headers = Headers, body = Body, requestId = RequestId, fromPid = Pid, overTime = OverTime, isSystem = IsSystem},
-               {ok, RequestId}
+               {ok, RequestId, MonitorRef}
          end;
       _ ->
          case getCurDbInfo(PoolNameOrSocket) of
@@ -124,11 +125,14 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
          end
    end.
 
--spec receiveResponse(requestId()) -> term() | {error, term()}.
-receiveResponse(RequestId) ->
+-spec receiveResponse(requestId(), reference()) -> term() | {error, term()}.
+receiveResponse(RequestId, MonitorRef) ->
    receive
       #miAgHttpCliRet{requestId = RequestId, reply = Reply} ->
-         Reply
+         erlang:demonitor(MonitorRef),
+         Reply;
+      {'DOWN', MonitorRef, process, _Pid, Reason} ->
+         {error, {agencyDown, Reason}}
    end.
 
 -spec receiveTcpData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp(), boolean()) -> requestRet() | {error, term()}.
