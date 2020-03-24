@@ -1,4 +1,5 @@
 -module(erlArango_sup).
+-include("agHttpCli.hrl").
 
 -include("erlArango.hrl").
 

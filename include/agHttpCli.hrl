@@ -1,3 +1,6 @@
+%% agency 管理进程的名称
+-define(agAgencyPoolMgr, agAgencyPoolMgr).
+
 %% beam cache 模块名
 -define(agBeamPool, agBeamPool).
 -define(agBeamAgency, agBeamAgency).
