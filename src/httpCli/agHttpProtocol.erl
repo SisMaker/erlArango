@@ -160,7 +160,7 @@ response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data, IsHeadMetho
    end.
 
 spellHeaders(Headers) ->
-   [<<Key/binary, ": ", Value/binary, "\r\n">> || {Key, Value} <- Headers].
+   <<<<Key/binary, ": ", Value/binary, "\r\n">> || {Key, Value} <- Headers>>.
 
 splitHeaders(Data, Rn, RnRn) ->
    case binary:split(Data, RnRn) of

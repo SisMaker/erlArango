@@ -102,6 +102,6 @@ spellQueryPars([]) ->
 spellQueryPars([{Key, Value}]) ->
    <<"?", (toBinary(Key))/binary, "=", (toBinary(Value))/binary>>;
 spellQueryPars([{Key, Value} | Tail]) ->
-   First = <<"?", (toBinary(Key))/binary, "=", (toBinary(Value))/binary>>,
-   Tail = [<<"&", (toBinary(OtherKey))/binary, "=", (toBinary(OtherValue))/binary>> || {OtherKey, OtherValue} <- Tail],
-   <<First/binary, Tail/binary>>.
+   FirstBinary = <<"?", (toBinary(Key))/binary, "=", (toBinary(Value))/binary>>,
+   TailBinary = <<<<"&", (toBinary(OtherKey))/binary, "=", (toBinary(OtherValue))/binary>> || {OtherKey, OtherValue} <- Tail>>,
+   <<FirstBinary/binary, TailBinary/binary>>.
