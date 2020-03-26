@@ -1,6 +1,8 @@
 -module(agEdges).
 -include("erlArango.hrl").
 
+-compile(inline).
+-compile({inline_size, 128}).
 -compile([export_all, nowarn_export_all]).
 
 %% doc_address:https://www.arangodb.com/docs/stable/http/edge.html

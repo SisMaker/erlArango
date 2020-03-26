@@ -187,7 +187,7 @@ overDealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers,
 
 -spec overReceiveTcpData(srvState(), cliState()) -> {ok, srvState(), cliState()}.
 overReceiveTcpData(#srvState{poolName = PoolName, serverName = ServerName, rn = Rn, rnrn = RnRn, socket = Socket} = SrvState,
-   #cliState{isHeadMethod = IsHeadMethod, backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
+   #cliState{isHeadMethod = IsHeadMethod, backlogNum = BacklogNum, curInfo = CurInfo, requestsIn = RequestsIn, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
    receive
       {tcp, Socket, Data} ->
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
@@ -244,6 +244,9 @@ overReceiveTcpData(#srvState{poolName = PoolName, serverName = ServerName, rn = 
       {tcp_error, Socket, Reason} ->
          gen_tcp:close(Socket),
          agAgencyUtils:dealClose(SrvState, CliState, {error, {tcp_error, Reason}});
+      #miRequest{} = MiRequest ->
+         agAgencyUtils:addQueue(RequestsIn, MiRequest),
+         overReceiveTcpData(SrvState, CliState#cliState{requestsIn = RequestsIn + 1, backlogNum = BacklogNum + 1});
       _Msg ->
          ?WARN(overReceiveTcpData, "receive unexpect msg: ~p~n", [_Msg]),
          overReceiveTcpData(SrvState, CliState)

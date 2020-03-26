@@ -188,7 +188,7 @@ overDealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers,
 
 -spec overReceiveSslData(srvState(), cliState()) -> {ok, srvState(), cliState()}.
 overReceiveSslData(#srvState{poolName = PoolName, serverName = ServerName, rn = Rn, rnrn = RnRn, socket = Socket} = SrvState,
-   #cliState{isHeadMethod = IsHeadMethod, backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
+   #cliState{isHeadMethod = IsHeadMethod, backlogNum = BacklogNum, curInfo = CurInfo, requestsIn = RequestsIn, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
    receive
       {ssl, Socket, Data} ->
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
@@ -245,6 +245,9 @@ overReceiveSslData(#srvState{poolName = PoolName, serverName = ServerName, rn = 
       {ssl_error, Socket, Reason} ->
          ssl:close(Socket),
          agAgencyUtils:dealClose(SrvState, CliState, {error, {ssl_error, Reason}});
+      #miRequest{} = MiRequest ->
+         agAgencyUtils:addQueue(RequestsIn, MiRequest),
+         overReceiveSslData(SrvState, CliState#cliState{requestsIn = RequestsIn + 1, backlogNum = BacklogNum + 1});
       _Msg ->
          ?WARN(overReceiveSslData, "receive unexpect msg: ~p~n", [_Msg]),
          overReceiveSslData(SrvState, CliState)

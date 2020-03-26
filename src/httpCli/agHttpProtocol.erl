@@ -59,7 +59,7 @@ response(undefined, Rn, RnRn, Data, IsHeadMethod) ->
             {chunked, Headers, Body} ->
                case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode < 200 andalso StatusCode >= 100) of
                   true ->
-                     {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = Rest}};
+                     {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = <<"{}">>}};
                   _ ->
                      RecvState = #recvState{stage = body, contentLength = chunked, statusCode = StatusCode, headers = Headers},
                      response(RecvState, Rn, RnRn, Body, IsHeadMethod)
@@ -75,7 +75,7 @@ response(undefined, Rn, RnRn, Data, IsHeadMethod) ->
                   true ->
                      case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode < 200 andalso StatusCode >= 100) of
                         true ->
-                           {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
+                           {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = <<"{}">>}};
                         _ ->
                            {ok, #recvState{stage = body, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}}
                      end
@@ -126,7 +126,7 @@ response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data, IsHeadMetho
             {chunked, Headers, Rest} ->
                case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode < 200 andalso StatusCode >= 100) of
                   true ->
-                     {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = Rest}};
+                     {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = 0, body = <<"{}">>}};
                   _ ->
                      RecvState = #recvState{stage = body, contentLength = chunked, statusCode = StatusCode, headers = Headers},
                      response(RecvState, Rn, RnRn, Rest, IsHeadMethod)
@@ -142,7 +142,7 @@ response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data, IsHeadMetho
                   true ->
                      case IsHeadMethod orelse StatusCode == 204 orelse StatusCode == 304 orelse (StatusCode < 200 andalso StatusCode >= 100) of
                         true ->
-                           {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}};
+                           {done, #recvState{stage = done, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = <<"{}">>}};
                         _ ->
                            {ok, #recvState{stage = body, statusCode = StatusCode, headers = Headers, contentLength = ContentLength, body = Body}}
                      end
@@ -167,7 +167,7 @@ splitHeaders(Data, Rn, RnRn) ->
       [Headers, Body] ->
          HeadersList = binary:split(Headers, Rn, [global]),
          ContentLength = contentLength(HeadersList),
-         {ContentLength, HeadersList, Body}
+         {ContentLength, Headers, Body}
    end.
 
 contentLength([]) ->

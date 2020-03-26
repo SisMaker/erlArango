@@ -10,23 +10,21 @@ start() ->
    agHttpCli:startPool(tt, [{poolSize, 10}], []).
 
 tt(C, N) ->
-   application:start(erlArango),
-   agHttpCli:startPool(tt, [{poolSize, 100}], []),
-   Request = {<<"GET">>, <<"/_api/database/current">>, [], []},
-   io:format("IMY**********************  start time ~p~n", [erlang:system_time(millisecond)]),
-   [spawn(test, test, [N, Request]) || _Idx <- lists:seq(1, C)].
+   application:ensure_all_started(erlArango),
+   agHttpCli:startPool(tt, [{poolSize, 16}], []),
+   StartTime = erlang:system_time(millisecond),
+   io:format("IMY**********************  started~n"),
+   [spawn(?MODULE, test, [N, StartTime]) || _Idx <- lists:seq(1, C)].
 %%test(N, Request).
 
 %% /_api/database
 
-test(0, Request) ->
-   R1 = {<<"GET">>, <<"/_api/database">>, [], []},
-   agHttpCli:callAgency(tt, R1, 5000),
-   io:format("IMY**********************  test over ~p~n", [erlang:system_time(millisecond)]);
-test(N, Request) ->
-   erlang:put(cnt, N),
-   agHttpCli:callAgency(tt, Request, 5000),
-   test(N - 1, Request).
+test(0, StartTime) ->
+   agDbMgr:curDbList(tt),
+   io:format("IMY******test over use time ~p~n", [erlang:system_time(millisecond) - StartTime]);
+test(N, StartTime) ->
+   agDbMgr:curDbList(tt),
+   test(N - 1, StartTime).
 
 %% tt(C, N) ->
 %%    application:start(erlArango),
@@ -64,3 +62,96 @@ tcjx(N, Args1) ->
    Args = {[{name, ffd}, {tet, "fdsff"}, {<<"dfdf">>, 131245435346}]},
    jiffy:encode(Args),
    tcjx(N - 1, Args1).
+
+
+
+-define(HeadBin, <<"X-Content-Type-Options: nosniff\r\nEtag: \"_aKwJ_tm--E\"\r\nServer: ArangoDB\r\nConnection: Keep-Alive\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 178">>).
+th1(0, Fun, Rn) ->
+   ?MODULE:Fun(?HeadBin, Rn);
+th1(N, Fun, Rn) ->
+   ?MODULE:Fun(?HeadBin, Rn),
+   th1(N - 1, Fun, Rn).
+
+th2(0, Fun, Cl, Rn) ->
+   ?MODULE:Fun(?HeadBin, Cl, Rn);
+th2(N, Fun, Cl, Rn) ->
+   ?MODULE:Fun(?HeadBin, Cl, Rn),
+   th2(N - 1, Fun, Cl, Rn).
+
+head1(Headers, Rn) ->
+   HeadersList = binary:split(Headers, Rn, [global]),
+   contentLength(HeadersList).
+
+head2(Headers, _Rn) ->
+   HeadersList = binary:split(Headers, <<"\r\n">>, [global]),
+   contentLength(HeadersList).
+
+head3(Headers, CL, Rn) ->
+   case binary:split(Headers, CL) of
+      [_, Rest1] ->
+         case binary:split(Rest1, Rn) of
+            [InBin, _Rest2] ->
+               binary_to_integer(InBin);
+            [InBin] ->
+               binary_to_integer(InBin)
+         end;
+      _ ->
+         0
+   end.
+
+%% binary:compile_pattern(<<"\r\n">>)
+%% binary:compile_pattern(<<"Content-Length: ">>)
+
+head4(Headers, _CL, _Rn) ->
+   case binary:split(Headers, <<"Content-Length: ">>) of
+      [_, Rest1] ->
+         case binary:split(Rest1, <<"\r\n">>) of
+            [InBin, _Rest2] ->
+               binary_to_integer(InBin);
+            [InBin] ->
+               binary_to_integer(InBin)
+         end;
+      _ ->
+         0
+   end.
+
+contentLength([]) ->
+   undefined;
+contentLength([<<"Content-Length: ", Rest/binary>> | _T]) ->
+   binary_to_integer(Rest);
+contentLength([<<"content-length: ", Rest/binary>> | _T]) ->
+   binary_to_integer(Rest);
+contentLength([<<"Transfer-Encoding: chunked">> | _T]) ->
+   chunked;
+contentLength([<<"transfer-encoding: chunked">> | _T]) ->
+   chunked;
+contentLength([_ | T]) ->
+   contentLength(T).
+
+
+-define(BodyBin1, <<"{\"_key\":\"01J\",\"_id\":\"airports/01J\",\"_rev\":\"_aKwJ_tm--E\",\"name\":\"Hilliard Airpark\",\"city\":\"Hilliard\",\"state\":\"FL\",\"country\":\"USA\",\"lat\":30.6880125,\"long\":-81.90594389,\"vip\":false}">>).
+-define(BodyBin2, <<"{\"_key\":\"01J\",\"_id\":\"airports/01J\",\"_rev\":\"_aPaBl7O--_\",\"name\":\"Hilliard Airpark\",\"city\":\"Hilliardfdfsdfdsffffffffffffffffffffffffffffffffffffffffffffffffffffffffafdsfasdfdafsdafdsfsdafdsafdsfdsfdsafdsfdsfdsfhghfghfghgfhsdsdfdsfdsfdsffdfddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddggggggggggggggggggggggggggggggggggggggggg\",\"state\":\"FL\",\"country\":\"USAjjkjkjkfgjkgjfkdjgldgjldjglfdjglfjdljljrlejtrltjewltjrelwtjrletjrletrletjlrejtjtrlwjrejwlrjjreljtljelwjrtlwjtreljrlewjrlwjrlwejrlejltkdfsafd\",\"lat\":30.6880125,\"long\":-81.90594389,\"vip\":false}">>).
+
+jd1(0, Fun) ->
+   ?MODULE:Fun(?BodyBin1);
+jd1(N, Fun) ->
+   ?MODULE:Fun(?BodyBin1),
+   jd1(N - 1, Fun).
+
+jd2(0, Fun) ->
+   ?MODULE:Fun(?BodyBin2);
+jd2(N, Fun) ->
+   ?MODULE:Fun(?BodyBin2),
+   jd2(N - 1, Fun).
+
+decode1(Bin) ->
+   jiffy:decode(Bin, [return_maps]).
+
+decode2(Bin) ->
+   jiffy:decode(Bin, [return_maps, copy_strings]).
+
+decode3(Bin) ->
+   jiffy:decode(Bin, [return_maps]).
+
+decode4(Bin) ->
+   jiffy:decode(Bin, [return_maps, copy_strings]).

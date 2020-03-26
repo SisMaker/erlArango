@@ -112,7 +112,7 @@ agencyMod(_) ->
 
 agencySpec(ServerMod, ServerName, Args) ->
    %% TODO 下面spawn_opt 参数需要调优
-   StartFunc = {ServerMod, start_link, [ServerName, Args, [{min_heap_size, 5000}, {min_bin_vheap_size, 100000}, {fullsweep_after, 500}]]},
+   StartFunc = {ServerMod, start_link, [ServerName, Args, [{min_heap_size, 10240}, {min_bin_vheap_size, 524288}, {fullsweep_after, 512}]]},
    {ServerName, StartFunc, transient, infinity, worker, [ServerMod]}.
 
 -spec startChildren(atom(), protocol(), poolSize(), agencyOpts()) -> ok.

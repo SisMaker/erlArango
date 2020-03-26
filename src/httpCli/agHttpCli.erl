@@ -14,7 +14,7 @@
    , castAgency/6
    , castAgency/7
    , castAgency/8
-   , receiveResponse/2
+   , receiveRequestRet/2
 
    %% 连接池API
    , startPool/2
@@ -41,7 +41,7 @@ callAgency(PoolNameOrSocket, Method, Path, Headers, Body, IsSystem) ->
 callAgency(PoolNameOrSocket, Method, Path, Headers, Body, IsSystem, Timeout) ->
    case castAgency(PoolNameOrSocket, Method, Path, Headers, Body, self(), IsSystem, Timeout) of
       {ok, RequestId, MonitorRef} ->
-         receiveResponse(RequestId, MonitorRef);
+         receiveRequestRet(RequestId, MonitorRef);
       {error, _Reason} = Err ->
          Err;
       Ret ->
@@ -124,14 +124,14 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
          end
    end.
 
--spec receiveResponse(requestId(), reference()) -> term() | {error, term()}.
-receiveResponse(RequestId, MonitorRef) ->
+-spec receiveRequestRet(requestId(), reference()) -> term() | {error, term()}.
+receiveRequestRet(RequestId, MonitorRef) ->
    receive
       #miRequestRet{requestId = RequestId, reply = Reply} ->
          erlang:demonitor(MonitorRef),
          case Reply of
             {ok, Headers, Body} ->
-               {ok, Headers, jiffy:decode(Body, [return_maps])};
+               {ok, Headers, jiffy:decode(Body, [return_maps, copy_strings])};
             _ ->
                Reply
          end;
@@ -145,7 +145,7 @@ receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod) ->
       {tcp, Socket, Data} ->
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
             {done, #recvState{headers = Headers, body = Body}} ->
-               {ok, Headers, jiffy:decode(Body, [return_maps])};
+               {ok, Headers, jiffy:decode(Body, [return_maps, copy_strings])};
             {ok, NewRecvState} ->
                receiveTcpData(NewRecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod);
             {error, Reason} ->
@@ -165,10 +165,7 @@ receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod) ->
          {error, tcp_closed};
       {tcp_error, Socket, Reason} ->
          disConnectDb(Socket),
-         {error, {tcp_error, Reason}};
-      _Msg ->
-         ?WARN(receiveTcpData, "receive unexpect msg: ~p~n", [_Msg]),
-         receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod)
+         {error, {tcp_error, Reason}}
    end.
 
 -spec receiveSslData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp(), boolean()) -> {ok, term(), term()} | {error, term()}.
@@ -177,9 +174,9 @@ receiveSslData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod) ->
       {ssl, Socket, Data} ->
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
             {done, #recvState{headers = Headers, body = Body}} ->
-               {ok, Headers, jiffy:decode(Body, [return_maps])};
+               {ok, Headers, jiffy:decode(Body, [return_maps, copy_strings])};
             {ok, NewRecvState} ->
-               receiveTcpData(NewRecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod);
+               receiveSslData(NewRecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod);
             {error, Reason} ->
                ?WARN(receiveSslData, "handle tcp data error: ~p ~n", [Reason]),
                disConnectDb(Socket),
@@ -197,10 +194,7 @@ receiveSslData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod) ->
          {error, ssl_closed};
       {ssl_error, Socket, Reason} ->
          disConnectDb(Socket),
-         {error, {ssl_error, Reason}};
-      _Msg ->
-         ?WARN(receiveSslData, "receive unexpect msg: ~p~n", [_Msg]),
-         receiveSslData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod)
+         {error, {ssl_error, Reason}}
    end.
 
 -spec startPool(poolName(), dbCfgs()) -> ok | {error, pool_name_used}.

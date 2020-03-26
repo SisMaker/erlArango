@@ -13,6 +13,7 @@
    , randomElement/1
    , toBinary/1
    , spellQueryPars/1
+   , getHeaderValue/2
    , lookHeader/2
 ]).
 
@@ -107,9 +108,14 @@ spellQueryPars([{Key, Value} | Tail]) ->
    TailBinary = <<<<"&", (toBinary(OtherKey))/binary, "=", (toBinary(OtherValue))/binary>> || {OtherKey, OtherValue} <- Tail>>,
    <<FirstBinary/binary, TailBinary/binary>>.
 
+-spec getHeaderValue(binary(), binary()) -> binary().
+getHeaderValue(Header, HeaderBin) ->
+   HeadersList = binary:split(HeaderBin, <<"\r\n">>, [global]),
+   lookHeader(Header, HeadersList).
+
 -spec lookHeader(binary, list()) -> binary().
 lookHeader(_Header, []) ->
-   <<>>;
+   undefined;
 lookHeader(Header, [H | T]) ->
    case binary:split(H, <<": ">>) of
       [Header, Value] ->

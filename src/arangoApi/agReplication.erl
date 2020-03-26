@@ -1,6 +1,8 @@
 -module(agReplication).
 -include("erlArango.hrl").
 
+-compile(inline).
+-compile({inline_size, 128}).
 -compile([export_all, nowarn_export_all]).
 
 % doc_address:https://www.arangodb.com/docs/3.6/http/replications.html
