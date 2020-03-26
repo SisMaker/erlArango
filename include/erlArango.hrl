@@ -1,6 +1,6 @@
--define(Get, <<"GET">>).
--define(Put, <<"PUT">>).
--define(Post, <<"POST">>).
--define(Head, <<"HEAD">>).
--define(Patch, <<"PATCH">>).
--define(Delete, <<"DELETE">>).
+-define(AgGet, <<"GET ">>).
+-define(AgPut, <<"PUT ">>).
+-define(AgPost, <<"POST ">>).
+-define(AgHead, <<"HEAD ">>).
+-define(AgPatch, <<"PATCH ">>).
+-define(AgDelete, <<"DELETE ">>).

@@ -25,7 +25,7 @@
 % 端点：协调器的绑定，例如tcp://[::1]:8530
 % 501：
 getClusterEndpoints(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/cluster/endpoints">>, [], undefined, true).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/cluster/endpoints">>, [], undefined, true).
 
 % 所有端点的返回列表永久链接
 % 此API调用返回所有端点（单个服务器）的列表。

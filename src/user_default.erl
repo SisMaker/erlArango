@@ -1,5 +1,7 @@
--module(test).
+-module(user_default).
+-include("agHttpCli.hrl").
 
+-compile([export_all, nowarn_export_all]).
 
 -compile([export_all, nowarn_export_all]).
 

@@ -36,7 +36,6 @@ handleMsg(#miRequest{method = Method, path = Path, headers = Headers, body = Bod
                case Status of
                   leisure -> %% 空闲模式
                      Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [UserPassWord | Headers]),
-                     io:format("IMY*******************************~n~p ~n", [Request]),
                      case gen_tcp:send(Socket, Request) of
                         ok ->
                            TimerRef =
@@ -46,7 +45,7 @@ handleMsg(#miRequest{method = Method, path = Path, headers = Headers, body = Bod
                                  _ ->
                                     erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                               end,
-                           {ok, SrvState, CliState#cliState{isHeadMethod = Method == ?Head, status = waiting, backlogNum = BacklogNum + 1, curInfo = {FromPid, RequestId, TimerRef}}};
+                           {ok, SrvState, CliState#cliState{isHeadMethod = Method == ?AgHead, status = waiting, backlogNum = BacklogNum + 1, curInfo = {FromPid, RequestId, TimerRef}}};
                         {error, Reason} ->
                            ?WARN(ServerName, ":send error: ~p ~p ~p ~n", [Reason, FromPid, RequestId]),
                            gen_tcp:close(Socket),
@@ -63,8 +62,8 @@ handleMsg({tcp, Socket, Data},
    #srvState{serverName = ServerName, rn = Rn, rnrn = RnRn, socket = Socket} = SrvState,
    #cliState{isHeadMethod = IsHeadMethod, backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
    try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
-      {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, body = Body}} ->
-         agAgencyUtils:agencyReply(CurInfo, #requestRet{statusCode = StatusCode, contentLength = ContentLength, body = Body}),
+      {done, #recvState{headers = Headers, body = Body}} ->
+         agAgencyUtils:agencyReply(CurInfo, {ok, Headers, Body}),
          case agAgencyUtils:getQueue(RequestsOut + 1) of
             undefined ->
                {ok, SrvState, CliState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined, recvState = undefined}};
@@ -132,7 +131,6 @@ handleMsg(Msg, #srvState{serverName = ServerName} = SrvState, CliState) ->
 terminate(_Reason,
    #srvState{socket = Socket} = SrvState,
    CliState) ->
-   io:format("IMY*******************terminate  ~p~n", [_Reason]),
    {ok, NewSrvState, NewCliState} = overAllWork(SrvState, CliState),
    gen_tcp:close(Socket),
    agAgencyUtils:dealClose(NewSrvState, NewCliState, {error, shutdown}),
@@ -178,7 +176,7 @@ overDealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers,
                      _ ->
                         erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                   end,
-               overReceiveTcpData(SrvState, CliState#cliState{isHeadMethod = Method == ?Head, status = waiting, requestsOut = RequestsOut + 1, curInfo = {FromPid, RequestId, TimerRef}});
+               overReceiveTcpData(SrvState, CliState#cliState{isHeadMethod = Method == ?AgHead, status = waiting, requestsOut = RequestsOut + 1, curInfo = {FromPid, RequestId, TimerRef}});
             {error, Reason} ->
                ?WARN(ServerName, ":send error: ~p~n", [Reason]),
                gen_tcp:close(Socket),
@@ -193,8 +191,8 @@ overReceiveTcpData(#srvState{poolName = PoolName, serverName = ServerName, rn = 
    receive
       {tcp, Socket, Data} ->
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
-            {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, headers = Headers, body = Body}} ->
-               agAgencyUtils:agencyReply(CurInfo, #requestRet{statusCode = StatusCode, contentLength = ContentLength, headers = Headers, body = Body}),
+            {done, #recvState{headers = Headers, body = Body}} ->
+               agAgencyUtils:agencyReply(CurInfo, {ok, Headers, Body}),
                case agAgencyUtils:getQueue(RequestsOut + 1) of
                   undefined ->
                      {ok, SrvState, CliState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined, recvState = undefined}};
@@ -294,7 +292,7 @@ dealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers, bod
                      _ ->
                         erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                   end,
-               {ok, SrvState, CliState#cliState{isHeadMethod = Method == ?Head, status = waiting, requestsOut = RequestsOut + 1, curInfo = {FromPid, RequestId, TimerRef}}};
+               {ok, SrvState, CliState#cliState{isHeadMethod = Method == ?AgHead, status = waiting, requestsOut = RequestsOut + 1, curInfo = {FromPid, RequestId, TimerRef}}};
             {error, Reason} ->
                ?WARN(ServerName, ":send error: ~p~n", [Reason]),
                gen_tcp:close(Socket),

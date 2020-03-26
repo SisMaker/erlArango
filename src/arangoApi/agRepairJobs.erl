@@ -8,9 +8,9 @@
 %% 检查修复
 %% GET /_admin/repairs/distributeShardsLike
 checkRepir(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/repairs/distributeShardsLike">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/repairs/distributeShardsLike">>, [], undefined).
 
 %% 修复
 %% POST /_admin/repairs/distributeShardsLike
 repir(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_admin/repairs/distributeShardsLike">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_admin/repairs/distributeShardsLike">>, [], undefined).

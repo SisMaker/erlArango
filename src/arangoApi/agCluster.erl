@@ -23,7 +23,7 @@
 % 200：当服务器以群集模式运行时返回。
 % 500：当服务器未在群集模式下运行时返回。
 getServerId(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/server/id">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/server/id">>, [], undefined).
 
 %返回集群中服务器的角色
 %GET /_admin/server/role
@@ -40,7 +40,7 @@ getServerId(PoolNameOrSocket) ->
 %errorNum：服务器错误号
 %作用：之一[ SINGLE，协调员，PRIMARY，SECONDARY，AGENT，UNDEFINED ]
 getServerRole(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/server/role">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/server/role">>, [], undefined).
 
 % DBserver查询统计
 % 允许查询集群中数据库服务器的统计信息
@@ -52,7 +52,7 @@ getServerRole(PoolNameOrSocket) ->
 % 400：数据库服务器的ID
 % 403：
 getClusterStatistics(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/clusterStatistics">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/clusterStatistics">>, [], undefined).
 
 % 查询集群的运行状况以进行监视
 % 返回由监督（机构）评估的集群的运行状况
@@ -82,7 +82,7 @@ getClusterStatistics(PoolNameOrSocket) ->
 % LastAckedTime：自上次以来的时间（acked以秒为单位）。
 % 返回码 200：
 getClusterHealth(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/cluster/health">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/cluster/health">>, [], undefined).
 
 % 启用或禁用监督维护模式
 % 启用或禁用集群监督（机构）维护模式
@@ -95,7 +95,7 @@ getClusterHealth(PoolNameOrSocket) ->
 % 501：
 % 504：
 setClusterMaintenance(PoolNameOrSocket, OnOrOff) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_admin/cluster/maintenance">>, [], OnOrOff).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_admin/cluster/maintenance">>, [], OnOrOff).
 
 
 

@@ -42,7 +42,6 @@ handleMsg(_Msg, State) ->
    {ok, State}.
 
 terminate(_Reason, _State) ->
-   io:format("IMY******************* agAgencyPoolMgrIns terminate ~p~n ", [_Reason]),
    ets:delete_all_objects(?ETS_AG_Pool),
    ets:delete_all_objects(?ETS_AG_Agency),
    agKvsToBeam:load(?agBeamPool, []),

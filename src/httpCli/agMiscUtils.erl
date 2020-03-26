@@ -13,6 +13,7 @@
    , randomElement/1
    , toBinary/1
    , spellQueryPars/1
+   , lookHeader/2
 ]).
 
 -spec parseUrl(binary()) -> dbOpts() | {error, invalid_url}.
@@ -105,3 +106,15 @@ spellQueryPars([{Key, Value} | Tail]) ->
    FirstBinary = <<"?", (toBinary(Key))/binary, "=", (toBinary(Value))/binary>>,
    TailBinary = <<<<"&", (toBinary(OtherKey))/binary, "=", (toBinary(OtherValue))/binary>> || {OtherKey, OtherValue} <- Tail>>,
    <<FirstBinary/binary, TailBinary/binary>>.
+
+-spec lookHeader(binary, list()) -> binary().
+lookHeader(_Header, []) ->
+   <<>>;
+lookHeader(Header, [H | T]) ->
+   case binary:split(H, <<": ">>) of
+      [Header, Value] ->
+         Value;
+      _ ->
+         lookHeader(Header, T)
+   end.
+

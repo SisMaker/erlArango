@@ -43,7 +43,7 @@ newViewOfArangoSearch(PoolNameOrSocket, MapData) ->
    case MapData of
       #{<<"type">> := <<"arangosearch">>} ->
          BodyStr = jiffy:encode(MapData),
-         agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/view">>, [], BodyStr);
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/view">>, [], BodyStr);
       _ ->
          {error, param}
    end.
@@ -60,7 +60,7 @@ newViewOfArangoSearch(PoolNameOrSocket, MapData) ->
 % 404：如果视图名称未知，则返回HTTP 404。
 getViewInfo(PoolNameOrSocket, ViewName) ->
    Path = <<"/_api/view/", ViewName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 
 % 读取指定视图的属性
@@ -74,7 +74,7 @@ getViewInfo(PoolNameOrSocket, ViewName) ->
 % 404：如果视图名称未知，则返回HTTP 404。
 getViewProperties(PoolNameOrSocket, ViewName) ->
    Path = <<"/_api/view/", ViewName/binary, "/properties">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 
 % 返回所有视图
@@ -86,7 +86,7 @@ getViewProperties(PoolNameOrSocket, ViewName) ->
 % 返回码
 % 200：视图列表
 getViewList(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/view">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/view">>, [], undefined).
 
 % 更改ArangoSearch视图的所有属性
 %
@@ -125,7 +125,7 @@ getViewList(PoolNameOrSocket) ->
 changeViewAllProperties(PoolNameOrSocket, ViewName, MapData) ->
    Path = <<"/_api/view/", ViewName/binary, "/properties">>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 % 部分更改ArangoSearch视图的属性
 % PATCH /_api/view/{view-name}/properties#ArangoSearch
@@ -163,7 +163,7 @@ changeViewAllProperties(PoolNameOrSocket, ViewName, MapData) ->
 changeViewPartProperties(PoolNameOrSocket, ViewName, MapData) ->
    Path = <<"/_api/view/", ViewName/binary, "/properties">>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Patch, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPatch, Path, [], BodyStr).
 
 % 重命名视图
 % PUT /_api/view/{view-name}/rename
@@ -182,7 +182,7 @@ changeViewPartProperties(PoolNameOrSocket, ViewName, MapData) ->
 renameView(PoolNameOrSocket, ViewName, NewViewName) ->
    Path = <<"/_api/view/", ViewName/binary, "/rename">>,
    NameStr = jiffy:encode(NewViewName),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], <<"{\"name\":", NameStr/binary, "}">>).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], <<"{\"name\":", NameStr/binary, "}">>).
 
 % 删除视图
 % DELETE /_api/view/{view-name}
@@ -197,4 +197,4 @@ renameView(PoolNameOrSocket, ViewName, NewViewName) ->
 % 404：如果视图名称未知，则返回HTTP 404。
 delView(PoolNameOrSocket, ViewName) ->
    Path = <<"/_api/view/", ViewName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).

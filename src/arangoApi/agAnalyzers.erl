@@ -25,7 +25,7 @@
 % 403：用户无权使用此配置创建和分析器。
 newAnalyzer(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/analyzer">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/analyzer">>, [], BodyStr).
 
 % 返回分析器定义
 % GET /_api/analyzer/{analyzer-name}
@@ -41,7 +41,7 @@ newAnalyzer(PoolNameOrSocket, MapData) ->
 % 404：不存在这种分析器配置。
 getAnalyzer(PoolNameOrSocket, AnalyzerName) ->
    Path = <<"/_api/analyzer/", AnalyzerName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 返回可用的分析器定义列表
 % GET /_api/analyzer
@@ -53,7 +53,7 @@ getAnalyzer(PoolNameOrSocket, AnalyzerName) ->
 % 返回码
 % 200：分析器定义已成功检索。
 getAnalyzerList(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/analyzer">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/analyzer">>, [], undefined).
 
 % 删除分析仪
 % DELETE /_api/analyzer/{analyzer-name}
@@ -74,7 +74,7 @@ getAnalyzerList(PoolNameOrSocket) ->
 
 delAnalyzer(PoolNameOrSocket, AnalyzerName) ->
    Path = <<"/_api/analyzer/", AnalyzerName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 delAnalyzer(PoolNameOrSocket, AnalyzerName, IsForce) ->
    Path =
@@ -84,4 +84,4 @@ delAnalyzer(PoolNameOrSocket, AnalyzerName, IsForce) ->
          _ ->
             <<"/_api/analyzer/", AnalyzerName/binary>>
       end,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).

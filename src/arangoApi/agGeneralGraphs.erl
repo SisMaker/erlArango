@@ -23,7 +23,7 @@
 % isSmart：标记图形是否为SmartGraph（仅限企业版）。
 % smartGraphAttribute：智能图例中的分片属性名称（仅企业版）
 getGharialList(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/gharial">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/gharial">>, [], undefined).
 
 
 % 在图形模块中创建一个新图形。
@@ -68,7 +68,7 @@ getGharialList(PoolNameOrSocket) ->
 % errorMessage：为此错误创建的消息。
 newGharial(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/gharial">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/gharial">>, [], BodyStr).
 
 newGharial(PoolNameOrSocket, MapData, WaitForSync) ->
    Path =
@@ -79,7 +79,7 @@ newGharial(PoolNameOrSocket, MapData, WaitForSync) ->
             <<"/_api/gharial?waitForSync=false">>
       end,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 % 获取图表
 % GET /_api/gharial/{graph}
@@ -97,7 +97,7 @@ newGharial(PoolNameOrSocket, MapData, WaitForSync) ->
 % errorMessage：为此错误创建的消息。
 getGharial(PoolNameOrSocket, GraphName) ->
    Path = <<"/_api/gharial/", GraphName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 
 % 删除现有图
@@ -122,7 +122,7 @@ getGharial(PoolNameOrSocket, GraphName) ->
 % errorMessage：为此错误创建的消息。
 delGharial(PoolNameOrSocket, GraphName) ->
    Path = <<"/_api/gharial/", GraphName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 delGharial(PoolNameOrSocket, GraphName, DropCollections) ->
    Path =
@@ -132,7 +132,7 @@ delGharial(PoolNameOrSocket, GraphName, DropCollections) ->
          _ ->
             <<"/_api/gharial/", GraphName/binary, "?dropCollections=false">>
       end,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 
 % 列出此图中使用的所有顶点集合。
@@ -151,7 +151,7 @@ delGharial(PoolNameOrSocket, GraphName, DropCollections) ->
 % errorMessage：为此错误创建的消息。
 getGharialVertexCollList(PoolNameOrSocket, GraphName) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 向图中添加一个额外的顶点集合。
 % POST /_api/gharial/{graph}/vertex
@@ -188,7 +188,7 @@ getGharialVertexCollList(PoolNameOrSocket, GraphName) ->
 addGharialVertexColl(PoolNameOrSocket, GraphName, MapData) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex">>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 % 从图形中删除顶点集合。
 % DELETE /_api/gharial/{graph}/vertex/{collection}
@@ -224,7 +224,7 @@ addGharialVertexColl(PoolNameOrSocket, GraphName, MapData) ->
 % errorMessage：为此错误创建的消息。
 delGharialVertexColl(PoolNameOrSocket, GraphName, CollName) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 delGharialVertexColl(PoolNameOrSocket, GraphName, CollName, DropCollection) ->
    Path =
@@ -234,7 +234,7 @@ delGharialVertexColl(PoolNameOrSocket, GraphName, CollName, DropCollection) ->
          _ ->
             <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary, "?dropCollection=false">>
       end,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 
 % 列出所有边缘定义
@@ -253,7 +253,7 @@ delGharialVertexColl(PoolNameOrSocket, GraphName, CollName, DropCollection) ->
 % errorMessage：为此错误创建的消息。
 getGharialEdgeDefList(PoolNameOrSocket, GraphName) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/edge">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 
 % 向图添加新的边定义
@@ -293,7 +293,7 @@ getGharialEdgeDefList(PoolNameOrSocket, GraphName) ->
 addGharialEdgeDef(PoolNameOrSocket, GraphName, MapData) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/edge">>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 
 % 替换现有的边缘定义
@@ -336,13 +336,13 @@ addGharialEdgeDef(PoolNameOrSocket, GraphName, MapData) ->
 replaceGharialEdgeDef(PoolNameOrSocket, GraphName, CollName, MapData) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 replaceGharialEdgeDef(PoolNameOrSocket, GraphName, CollName, MapData, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary, QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 
 % 从图形中删除边缘定义
@@ -376,12 +376,12 @@ replaceGharialEdgeDef(PoolNameOrSocket, GraphName, CollName, MapData, QueryPars)
 
 delGharialEdgeDef(PoolNameOrSocket, GraphName, CollName) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 delGharialEdgeDef(PoolNameOrSocket, GraphName, CollName, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary, QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 
 % 创建一个新顶点
@@ -419,13 +419,13 @@ delGharialEdgeDef(PoolNameOrSocket, GraphName, CollName, QueryPars) ->
 newGharialVertex(PoolNameOrSocket, GraphName, CollName, MapData) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 newGharialVertex(PoolNameOrSocket, GraphName, CollName, MapData, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary, QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 
 % 获取现有顶点
@@ -471,12 +471,12 @@ newGharialVertex(PoolNameOrSocket, GraphName, CollName, MapData, QueryPars) ->
 % errorMessage：为此错误创建的消息。
 getGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary, "/", (agMiscUtils:toBinary(VertexKey) / binary)>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 getGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey, Headers, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary, "/", (agMiscUtils:toBinary(VertexKey) / binary), QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, Headers, undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, Headers, undefined).
 
 
 % 更新现有顶点
@@ -530,13 +530,13 @@ getGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey, Headers, Quer
 updateGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey, MapData) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary, "/", (agMiscUtils:toBinary(VertexKey) / binary)>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Patch, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPatch, Path, [], BodyStr).
 
 updateGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey, MapData, Headers, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary, "/", (agMiscUtils:toBinary(VertexKey) / binary), QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Patch, Path, Headers, BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPatch, Path, Headers, BodyStr).
 
 
 % 替换现有的顶点
@@ -590,13 +590,13 @@ updateGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey, MapData, H
 replaceGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey, MapData) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary, "/", (agMiscUtils:toBinary(VertexKey) / binary)>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 replaceGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey, MapData, Headers, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary, "/", (agMiscUtils:toBinary(VertexKey) / binary), QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, Headers, BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, Headers, BodyStr).
 
 % 从图中删除顶点
 % DELETE /_api/gharial/{graph}/vertex/{collection}/{vertex}
@@ -642,12 +642,12 @@ replaceGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey, MapData, 
 % errorMessage：为此错误创建的消息。
 delGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary, "/", (agMiscUtils:toBinary(VertexKey) / binary)>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
 delGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey, Headers, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/gharial/", GraphName/binary, "/vertex/", CollName/binary, "/", (agMiscUtils:toBinary(VertexKey) / binary), QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, Headers, undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, Headers, undefined).
 
 
 % 在现有图形中创建边
@@ -695,13 +695,13 @@ delGharialVertex(PoolNameOrSocket, GraphName, CollName, VertexKey, Headers, Quer
 newGharialEdge(PoolNameOrSocket, GraphName, CollName, MapData) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 newGharialEdge(PoolNameOrSocket, GraphName, CollName, MapData, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary, QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 % 获得边
 % GET /_api/gharial/{graph}/edge/{collection}/{edge}
@@ -746,11 +746,11 @@ newGharialEdge(PoolNameOrSocket, GraphName, CollName, MapData, QueryPars) ->
 % errorMessage：为此错误创建的消息。
 getGharialEdge(PoolNameOrSocket, GraphName, CollName, EdgeKey) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary, "/", (agMiscUtils:toBinary(EdgeKey))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 getGharialEdge(PoolNameOrSocket, GraphName, CollName, EdgeKey, Headers) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary, "/", (agMiscUtils:toBinary(EdgeKey))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, Headers, undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, Headers, undefined).
 
 
 % 修改现有边
@@ -805,13 +805,13 @@ getGharialEdge(PoolNameOrSocket, GraphName, CollName, EdgeKey, Headers) ->
 updateGharialEdge(PoolNameOrSocket, GraphName, CollName, EdgeKey, MapData) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary, "/", (agMiscUtils:toBinary(EdgeKey))/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Patch, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPatch, Path, [], BodyStr).
 
 updateGharialEdge(PoolNameOrSocket, GraphName, CollName, EdgeKey, MapData, Headers, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary, "/", (agMiscUtils:toBinary(EdgeKey))/binary, QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Patch, Path, Headers, BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPatch, Path, Headers, BodyStr).
 
 
 % 替换现有边的内容
@@ -867,13 +867,13 @@ updateGharialEdge(PoolNameOrSocket, GraphName, CollName, EdgeKey, MapData, Heade
 replaceGharialEdge(PoolNameOrSocket, GraphName, CollName, EdgeKey, MapData) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary, "/", (agMiscUtils:toBinary(EdgeKey))/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 replaceGharialEdge(PoolNameOrSocket, GraphName, CollName, EdgeKey, MapData, Headers, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary, "/", (agMiscUtils:toBinary(EdgeKey))/binary, QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, Headers, BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, Headers, BodyStr).
 
 % 从图形中删除边
 % DELETE /_api/gharial/{graph}/edge/{collection}/{edge}
@@ -919,11 +919,11 @@ replaceGharialEdge(PoolNameOrSocket, GraphName, CollName, EdgeKey, MapData, Head
 % errorMessage：为此错误创建的消息。
 delGharialEdge(PoolNameOrSocket, GraphName, CollName, EdgeKey) ->
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary, "/", (agMiscUtils:toBinary(EdgeKey))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 delGharialEdge(PoolNameOrSocket, GraphName, CollName, EdgeKey, Headers, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/gharial/", GraphName/binary, "/edge/", CollName/binary, "/", (agMiscUtils:toBinary(EdgeKey))/binary, QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, Headers, undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, Headers, undefined).
 
 

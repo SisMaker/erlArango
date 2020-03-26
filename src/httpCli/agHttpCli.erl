@@ -85,7 +85,6 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
          case getCurDbInfo(PoolNameOrSocket) of
             {DbName, UserPassWord, Host, Protocol} ->
                Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [UserPassWord | Headers]),
-               io:format("IMY*******************************~n~p ~n", [Request]),
                case Protocol of
                   tcp ->
                      case gen_tcp:send(PoolNameOrSocket, Request) of
@@ -97,7 +96,7 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
                                  _ ->
                                     erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                               end,
-                           receiveTcpData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>), Method == ?Head);
+                           receiveTcpData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>), Method == ?AgHead);
                         {error, Reason} = Err ->
                            ?WARN(castAgency, ":gen_tcp send error: ~p ~n", [Reason]),
                            disConnectDb(PoolNameOrSocket),
@@ -113,7 +112,7 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
                                  _ ->
                                     erlang:start_timer(OverTime, self(), waiting_over, [{abs, true}])
                               end,
-                           receiveSslData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>), Method == ?Head);
+                           receiveSslData(undefined, PoolNameOrSocket, TimerRef, binary:compile_pattern(<<"\r\n">>), binary:compile_pattern(<<"\r\n\r\n">>), Method == ?AgHead);
                         {error, Reason} = Err ->
                            ?WARN(castAgency, ":ssl send error: ~p ~n", [Reason]),
                            disConnectDb(PoolNameOrSocket),
@@ -128,21 +127,25 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
 -spec receiveResponse(requestId(), reference()) -> term() | {error, term()}.
 receiveResponse(RequestId, MonitorRef) ->
    receive
-      #miAgHttpCliRet{requestId = RequestId, reply = Reply} ->
+      #miRequestRet{requestId = RequestId, reply = Reply} ->
          erlang:demonitor(MonitorRef),
-         Reply;
+         case Reply of
+            {ok, Headers, Body} ->
+               {ok, Headers, jiffy:decode(Body, [return_maps])};
+            _ ->
+               Reply
+         end;
       {'DOWN', MonitorRef, process, _Pid, Reason} ->
          {error, {agencyDown, Reason}}
    end.
 
--spec receiveTcpData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp(), boolean()) -> requestRet() | {error, term()}.
+-spec receiveTcpData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp(), boolean()) -> {ok, term(), term()} | {error, term()}.
 receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod) ->
    receive
       {tcp, Socket, Data} ->
-         io:format("IMY*******************************  ~p ~n ", [Data]),
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
-            {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, headers = Headers, body = Body}} ->
-               #requestRet{statusCode = StatusCode, contentLength = ContentLength, headers = Headers, body = Body};
+            {done, #recvState{headers = Headers, body = Body}} ->
+               {ok, Headers, jiffy:decode(Body, [return_maps])};
             {ok, NewRecvState} ->
                receiveTcpData(NewRecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod);
             {error, Reason} ->
@@ -168,13 +171,13 @@ receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod) ->
          receiveTcpData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod)
    end.
 
--spec receiveSslData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp(), boolean()) -> requestRet() | {error, term()}.
+-spec receiveSslData(recvState() | undefined, socket(), reference() | undefined, binary:cp(), binary:cp(), boolean()) -> {ok, term(), term()} | {error, term()}.
 receiveSslData(RecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod) ->
    receive
       {ssl, Socket, Data} ->
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
-            {done, #recvState{statusCode = StatusCode, contentLength = ContentLength, body = Body}} ->
-               #requestRet{statusCode = StatusCode, contentLength = ContentLength, body = Body};
+            {done, #recvState{headers = Headers, body = Body}} ->
+               {ok, Headers, jiffy:decode(Body, [return_maps])};
             {ok, NewRecvState} ->
                receiveTcpData(NewRecvState, Socket, TimerRef, Rn, RnRn, IsHeadMethod);
             {error, Reason} ->

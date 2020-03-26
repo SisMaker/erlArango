@@ -29,7 +29,7 @@
 % 408：如果操作无法在超时时间内获得全局事务锁定，则返回HTTP 408。
 newBackup(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_admin/backup/create">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_admin/backup/create">>, [], BodyStr).
 
 % 从本地备份还原
 % POST /_admin/backup/restore
@@ -41,7 +41,7 @@ newBackup(PoolNameOrSocket, MapData) ->
 % 400：如果使用错误的参数或除以外的任何HTTP方法调用了restore命令POST，则返回HTTP 400。具体细节在返回的错误文档中有详细说明。
 restoreBackup(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_admin/backup/restore">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_admin/backup/restore">>, [], BodyStr).
 
 % 删除特定的本地备份
 % POST /_admin/backup/delete
@@ -54,7 +54,7 @@ restoreBackup(PoolNameOrSocket, MapData) ->
 % 404：如果id找不到与该标识符相对应的备份。
 delBackup(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_admin/backup/delete">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_admin/backup/delete">>, [], BodyStr).
 
 % 列出所有本地备份
 % POST /_admin/backup/list
@@ -67,7 +67,7 @@ delBackup(PoolNameOrSocket, MapData) ->
 % 404：如果id给出了ID或ID列表，但未找到给定ID作为备份的标识符，则返回HTTP 404 NOT FOUND。
 % 405：如果使用以外的任何HTTP方法调用了list命令POST，则返回HTTP 405 METHOD NOT ALLOWED。
 getBackupList(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_admin/backup/list">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_admin/backup/list">>, [], undefined).
 
 % 上传特定的本地备份
 % POST /_admin/backup/upload
@@ -86,7 +86,7 @@ getBackupList(PoolNameOrSocket) ->
 % 404：如果id 找不到对应于标识符的备份，或者没有已知的上载操作uploadId。
 uploadBackup(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_admin/backup/upload">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_admin/backup/upload">>, [], BodyStr).
 
 % 下载特定的本地备份
 % POST /_admin/backup/download
@@ -105,4 +105,4 @@ uploadBackup(PoolNameOrSocket, MapData) ->
 % 404：如果id 找不到与该标识符相对应的备份，或者如果没有已知的与的下载操作downloadId。
 downloadBackup(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_admin/backup/download">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_admin/backup/download">>, [], BodyStr).

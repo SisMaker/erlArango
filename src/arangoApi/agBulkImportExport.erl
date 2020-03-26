@@ -54,7 +54,7 @@ importFormDocument(PoolNameOrSocket, ListOfList, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/import", QueryBinary/binary>>,
    BodyStr = jiffy:encode(ListOfList),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 
 % 从JSON 导入文档
@@ -96,7 +96,7 @@ importFormJson(PoolNameOrSocket, MapDataList, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/import", QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapDataList),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 % 批处理请求的HTTP接口
 % 客户端通常在单独的HTTP请求中向ArangoDB发送单独的操作。这是直接且简单的，但是具有以下缺点：如果连续发出许多小请求，则网络开销可能会很大。
@@ -159,4 +159,4 @@ importFormJson(PoolNameOrSocket, MapDataList, QueryPars) ->
 exportDocuments(PoolNameOrSocket, CollName, MapData) ->
    Path = <<"/_api/export?collection=", CollName/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).

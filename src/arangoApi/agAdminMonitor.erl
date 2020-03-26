@@ -31,12 +31,12 @@
 % 400：如果为up或level指定了无效值，则返回。
 % 500：如果服务器由于内存不足错误而无法生成结果，则返回。
 getAdminLog(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/log">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/log">>, [], undefined).
 
 getAdminLog(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_admin/log", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 返回当前的日志级别设置
 % GET /_admin/log/level
@@ -45,7 +45,7 @@ getAdminLog(PoolNameOrSocket, QueryPars) ->
 % 200：如果请求有效，则返回
 % 500：如果服务器由于内存不足错误而无法生成结果，则返回。
 getAdminLogLevel(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/log/level">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/log/level">>, [], undefined).
 
 % 修改当前的日志级别设置
 % PUT /_admin/log/level
@@ -107,7 +107,7 @@ getAdminLogLevel(PoolNameOrSocket) ->
 % 500：如果服务器由于内存不足错误而无法生成结果，则返回。
 modifyAdminLogLevel(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_admin/log/level">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_admin/log/level">>, [], BodyStr).
 
 % 返回统计信息
 % GET /_admin/statistics
@@ -177,7 +177,7 @@ modifyAdminLogLevel(PoolNameOrSocket, MapData) ->
 % 进行中：当前繁忙的工作线程数
 % 排队：排队等待工作线程可用的作业数
 getAdminStatistics(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/statistics">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/statistics">>, [], undefined).
 
 % 统计数据说明
 % 获取统计信息的描述性信息
@@ -211,7 +211,7 @@ getAdminStatistics(PoolNameOrSocket) ->
 % code：HTTP状态码
 % 错误：错误，在这种情况下为false
 getAdminStatisticsDesc(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/statistics-description">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/statistics-description">>, [], undefined).
 
 % 返回当前实例指标
 % GET /_admin/metrics
@@ -222,7 +222,7 @@ getAdminStatisticsDesc(PoolNameOrSocket) ->
 % 200：指标已成功返回。
 % 404：可以使用--server.export-metrics-api false 服务器中的设置禁用指标API 。在这种情况下，调用结果表明找不到该API。
 getAdminMetrics(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/metrics">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/metrics">>, [], undefined).
 
 
 % 集群
@@ -234,7 +234,7 @@ getAdminMetrics(PoolNameOrSocket) ->
 % 返回码
 % 200：如果一切正常，此API将返回HTTP 200
 getAdminServerMode(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/server/mode">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/server/mode">>, [], undefined).
 
 % 返回集群永久链接中服务器的ID
 % 了解服务器的内部ID
@@ -244,7 +244,7 @@ getAdminServerMode(PoolNameOrSocket) ->
 % 200：当服务器以群集模式运行时返回。
 % 500：当服务器未在群集模式下运行时返回。
 getAdminServerId(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/server/id">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/server/id">>, [], undefined).
 
 % 返回集群中服务器的角色
 % GET /_admin/server/role
@@ -261,7 +261,7 @@ getAdminServerId(PoolNameOrSocket) ->
 % errorNum：服务器错误号
 % 作用：之一[ SINGLE，协调员，PRIMARY，SECONDARY，AGENT，UNDEFINED ]
 getAdminServerRole(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/server/role">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/server/role">>, [], undefined).
 
 
 % 返回服务器是否可用
@@ -272,7 +272,7 @@ getAdminServerRole(PoolNameOrSocket) ->
 % 200：如果服务器已启动并且正在运行并且可用于任意操作，并且未设置为只读模式，并且在活动故障转移设置的情况下当前不是关注者，则此API将返回HTTP 200。
 % 503：如果服务器在启动或关闭过程中，设置为只读模式或当前在活动故障转移设置中为关注者，则将返回HTTP 503。
 getAdminServerAvailability(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/server/availability">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/server/availability">>, [], undefined).
 
 % DBserver 永久链接的查询统计信息
 % 允许查询集群中数据库服务器的统计信息
@@ -285,7 +285,7 @@ getAdminServerAvailability(PoolNameOrSocket) ->
 % 403：
 getAdminClusterStatistics(PoolNameOrSocket, DBserver) ->
    Path = <<"/_admin/clusterStatistics?DBserver=", (agMiscUtils:toBinary(DBserver))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 查询集群的运行状况以监视Permalink
 % 返回由监督（机构）评估的集群的运行状况
@@ -316,7 +316,7 @@ getAdminClusterStatistics(PoolNameOrSocket, DBserver) ->
 % 返回码
 % 200：
 getAdminClusterHealth(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/cluster/health">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/cluster/health">>, [], undefined).
 
 % 重新加载路由表。
 % POST /_admin/routing/reload
@@ -324,4 +324,4 @@ getAdminClusterHealth(PoolNameOrSocket) ->
 % 返回码
 % 200：路由信息重新加载成功
 reloadAdminRouting(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_admin/routing/reload">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_admin/routing/reload">>, [], undefined).

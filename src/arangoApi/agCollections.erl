@@ -75,34 +75,34 @@
 %  404：如果集合名称未知，则返回HTTP 404。
 newColl(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/collection">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/collection">>, [], BodyStr).
 
 newColl(PoolNameOrSocket, MapData, WaitForSyncReplication, ForceReplicationFactor) ->
    BodyStr = jiffy:encode(MapData),
    Path = <<"/_api/collection?waitForSyncReplication=", (agMiscUtils:toBinary(WaitForSyncReplication))/binary, "&forceReplicationFactor=", (agMiscUtils:toBinary(ForceReplicationFactor))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 % 删除集合
 % DELETE /_api/collection/{collection-name}
 delColl(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 delColl(PoolNameOrSocket, CollName, IsSystem) ->
    case IsSystem of
       true ->
          Path = <<"/_api/collection/", CollName/binary, "?isSystem=true">>,
-         agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined);
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined);
       _ ->
          Path = <<"/_api/collection/", CollName/binary>>,
-         agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined)
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined)
    end.
 
 % 截断集合
 % PUT /_api/collection/{collection-name}/truncate
 clearColl(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/truncate">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
 % 返回有关集合的信息
 % GET /_api/collection/{collection-name}
@@ -126,13 +126,13 @@ clearColl(PoolNameOrSocket, CollName) ->
 % 404：如果集合名称未知，则返回HTTP 404。
 collInfo(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 读取指定集合的属性
 % GET /_api/collection/{collection-name}/properties
 collProperties(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", (CollName)/binary, "/properties">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 返回集合中的文档数量
 % 计算集合中的文档
@@ -140,7 +140,7 @@ collProperties(PoolNameOrSocket, CollName) ->
 % GET /_api/collection/{collection-name}/count
 collCount(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/count">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 获取集合的统计信息
 % GET /_api/collection/{collection-name}/figures
@@ -154,7 +154,7 @@ collCount(PoolNameOrSocket, CollName) ->
 % 仍然可以将fileSize值的总和用作磁盘使用率的下限近似值。
 collFigures(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/figures">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 返回负责文档的分片
 % PUT /_api/collection/{collection-name}/responsibleShard
@@ -171,7 +171,7 @@ collFigures(PoolNameOrSocket, CollName) ->
 collResponsibleShard(PoolNameOrSocket, CollName, MapData) ->
    Path = <<"/_api/collection/", CollName/binary, "/responsibleShard">>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], BodyStr).
 
 % 返回集合永久链接的分片 ID
 % 返回集合的分片ID
@@ -183,16 +183,16 @@ collResponsibleShard(PoolNameOrSocket, CollName, MapData) ->
 % details (optional)：如果设置为true，则返回值还将包含集合碎片的负责服务器。
 collShards(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/shards">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 collShards(PoolNameOrSocket, CollName, IsDetails) ->
    case IsDetails of
       true ->
          Path = <<"/_api/collection/", CollName/binary, "/shards?details=true">>,
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined);
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined);
       _ ->
          Path = <<"/_api/collection/", CollName/binary, "/shards">>,
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined)
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined)
    end.
 
 % 返回集合修订版ID
@@ -201,7 +201,7 @@ collShards(PoolNameOrSocket, CollName, IsDetails) ->
 % GET /_api/collection/{collection-name}/revision
 collRevision(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/revision">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 返回集合永久链接的校验和
 % 返回指定集合的​​校验和
@@ -220,17 +220,17 @@ collRevision(PoolNameOrSocket, CollName) ->
 % GET /_api/collection/{collection-name}/checksum
 collChecksum(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/checksum">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 
 collChecksum(PoolNameOrSocket, CollName, IsWithRevisions, IsWithData) ->
    case IsWithRevisions orelse IsWithData of
       false ->
          Path = <<"/_api/collection/", CollName/binary, "/checksum">>,
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined);
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined);
       _ ->
          Path = <<"/_api/collection/", CollName/binary, "/checksum?withRevisions=", (agMiscUtils:toBinary(IsWithRevisions, utf8))/binary, "&withData=", (erlang:atom_to_binary(IsWithRevisions, utf8))/binary>>,
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined)
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined)
    end.
 
 % 返回所有集合
@@ -238,15 +238,15 @@ collChecksum(PoolNameOrSocket, CollName, IsWithRevisions, IsWithData) ->
 % excludeSystem（可选）：是否应从结果中排除系统集合。
 % GET /_api/collection
 collList(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/collection">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/collection">>, [], undefined).
 
 collList(PoolNameOrSocket, IsExcludeSystem) ->
    case IsExcludeSystem of
       false ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/collection">>, [], undefined);
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/collection">>, [], undefined);
       _ ->
          Path = <<"/_api/collection/?excludeSystem=true">>,
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined)
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined)
    end.
 
 % 加载集合
@@ -255,17 +255,17 @@ collList(PoolNameOrSocket, IsExcludeSystem) ->
 % PUT /_api/collection/{collection-name}/load
 collLoad(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/load">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
 
 collLoad(PoolNameOrSocket, CollName, IsCount) ->
    case IsCount of
       false ->
          Path = <<"/_api/collection/", CollName/binary, "/load">>,
-         agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], <<"{\"count\":false}">>);
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], <<"{\"count\":false}">>);
       _ ->
          Path = <<"/_api/collection/", CollName/binary, "/load">>,
-         agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined)
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined)
    end.
 
 % 卸载集合
@@ -282,7 +282,7 @@ collLoad(PoolNameOrSocket, CollName, IsCount) ->
 
 collUnload(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/unload">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
 % 将索引加载到内存中
 % PUT /_api/collection/{collection-name}/loadIndexesIntoMemory
@@ -298,7 +298,7 @@ collUnload(PoolNameOrSocket, CollName) ->
 
 collLoadIndexesIntoMemory(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/loadIndexesIntoMemory">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
 % 更改集合的属性
 % PUT /_api/collection/{collection-name}/properties
@@ -327,7 +327,7 @@ collLoadIndexesIntoMemory(PoolNameOrSocket, CollName) ->
 collChangeProperties(PoolNameOrSocket, CollName, MapData) ->
    Path = <<"/_api/collection/", CollName/binary, "/properties">>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 % 重命名集合
 % PUT /_api/collection/{collection-name}/rename
@@ -348,7 +348,7 @@ collChangeProperties(PoolNameOrSocket, CollName, MapData) ->
 collRename(PoolNameOrSocket, OldName, NewName) ->
    Path = <<"/_api/collection/", OldName/binary, "/rename">>,
    NameStr = jiffy:encode(NewName),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], <<"{\"name\":", NameStr/binary, "}">>).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], <<"{\"name\":", NameStr/binary, "}">>).
 
 % 旋转收藏夹的日记
 % PUT /_api/collection/{collection-name}/rotate
@@ -364,7 +364,7 @@ collRename(PoolNameOrSocket, OldName, NewName) ->
 % 404：如果集合名称未知，则返回HTTP 404。
 collRotate(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/rotate">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
 
 % 重新计算集合的文档数
@@ -377,4 +377,4 @@ collRotate(PoolNameOrSocket, CollName) ->
 % 注意：此方法特定于RocksDB存储引擎
 collRecalculateCount(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/recalculateCount">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).

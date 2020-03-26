@@ -69,7 +69,7 @@
 % 405：如果使用了不受支持的HTTP方法，则服务器将以HTTP 405进行响应。
 newAqlCursor(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/cursor">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/cursor">>, [], BodyStr).
 
 
 % 从现有游标返回下一个结果
@@ -88,7 +88,7 @@ newAqlCursor(PoolNameOrSocket, MapData) ->
 % 404：如果找不到具有指定标识符的游标，则服务器将使用HTTP 404进行响应。
 nextAqlCursor(PoolNameOrSocket, CursorId) ->
    Path = <<"/_api/cursor/", (agMiscUtils:toBinary(CursorId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
 % 删除光标
 % DELETE /_api/cursor/{cursor-identifier}
@@ -102,7 +102,7 @@ nextAqlCursor(PoolNameOrSocket, CursorId) ->
 % 404：如果服务器不知道游标，则返回404。如果在销毁游标后使用了游标，也将返回该值。
 delAqlCursor(PoolNameOrSocket, CursorId) ->
    Path = <<"/_api/cursor/", (agMiscUtils:toBinary(CursorId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 % AQL查询的HTTP接口
 %
@@ -137,7 +137,7 @@ delAqlCursor(PoolNameOrSocket, CursorId) ->
 % 404：如果查询中访问了不存在的集合，服务器将以HTTP 404进行响应。
 explainAqlQuery(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/explain">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/explain">>, [], BodyStr).
 
 
 % 解析一个AQL查询并返回有关它的信息
@@ -150,7 +150,7 @@ explainAqlQuery(PoolNameOrSocket, MapData) ->
 % 400：如果请求格式错误或查询包含解析错误，服务器将以HTTP 400响应。响应的正文将包含嵌入在JSON对象中的错误详细信息。
 parseAqlQuery(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/query">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/query">>, [], BodyStr).
 
 % 查询跟踪固定链接
 % ArangoDB具有HTTP接口，用于检索当前正在执行的AQL查询列表和慢速AQL查询列表。为了有意义地使用这些API，需要在执行HTTP请求的数据库中启用查询跟踪。
@@ -168,7 +168,7 @@ parseAqlQuery(PoolNameOrSocket, MapData) ->
 % 200：如果成功检索到属性，则返回。
 % 400：如果请求格式错误，服务器将以HTTP 400进行响应，
 getAqlQueryProperties(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/query/properties">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/query/properties">>, [], undefined).
 
 
 % 更改AQL查询跟踪的配置
@@ -187,7 +187,7 @@ getAqlQueryProperties(PoolNameOrSocket) ->
 % 400：如果请求格式错误，服务器将以HTTP 400进行响应，
 changeAqlQueryProperties(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_api/query/properties">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/query/properties">>, [], BodyStr).
 
 
 % 返回当前正在运行的AQL查询的列表
@@ -204,7 +204,7 @@ changeAqlQueryProperties(PoolNameOrSocket, MapData) ->
 % 200：可以成功检索查询列表时返回。
 % 400：如果请求格式错误，服务器将以HTTP 400进行响应，
 getAqlQueryCurrent(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/query/current">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/query/current">>, [], undefined).
 
 
 % 返回运行缓慢的AQL查询的列表
@@ -222,7 +222,7 @@ getAqlQueryCurrent(PoolNameOrSocket) ->
 % 200：可以成功检索查询列表时返回。
 % 400：如果请求格式错误，服务器将以HTTP 400进行响应，
 getAqlQuerySlow(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/query/slow">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/query/slow">>, [], undefined).
 
 
 % 清除慢速AQL查询列表
@@ -232,7 +232,7 @@ getAqlQuerySlow(PoolNameOrSocket) ->
 % 200：成功清除查询列表后，服务器将以HTTP 200响应。
 % 400：如果请求格式错误，服务器将使用HTTP 400进行响应。
 delAqlQuerySlow(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, <<"/_api/query/slow">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, <<"/_api/query/slow">>, [], undefined).
 
 
 % 杀死一个AQL查询
@@ -246,7 +246,7 @@ delAqlQuerySlow(PoolNameOrSocket) ->
 % 404：当找不到指定ID的查询时，服务器将以HTTP 404响应。
 killAqlQuery(PoolNameOrSocket, QueryId) ->
    Path = <<"/_api/query/", (agMiscUtils:toBinary(QueryId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 % AQL查询结果缓存的HTTP接口
 % 本节介绍用于控制AQL查询结果缓存的API方法。
@@ -268,7 +268,7 @@ killAqlQuery(PoolNameOrSocket, QueryId) ->
 % 200：可以成功检索结果列表时返回。
 % 400：如果请求格式错误，服务器将以HTTP 400进行响应，
 getAqlQueryCaches(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/query-cache/entries">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/query-cache/entries">>, [], undefined).
 
 
 % 清除AQL查询结果缓存
@@ -278,7 +278,7 @@ getAqlQueryCaches(PoolNameOrSocket) ->
 % 200：成功清除缓存后，服务器将以HTTP 200响应。
 % 400：如果请求格式错误，服务器将使用HTTP 400进行响应。
 clearAqlQueryCaches(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, <<"/_api/query-cache">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, <<"/_api/query-cache">>, [], undefined).
 
 
 % 返回AQL查询结果缓存的全局配置
@@ -293,7 +293,7 @@ clearAqlQueryCaches(PoolNameOrSocket) ->
 % 200：如果可以成功检索属性，则返回。
 % 400：如果请求格式错误，服务器将以HTTP 400进行响应，
 getAqlQueryCacheProperties(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/query-cache/properties">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/query-cache/properties">>, [], undefined).
 
 
 % 更改AQL查询结果缓存的配置
@@ -311,7 +311,7 @@ getAqlQueryCacheProperties(PoolNameOrSocket) ->
 % 400：如果请求格式错误，服务器将以HTTP 400进行响应，
 changeAqlQueryCacheProperties(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/query-cache/properties">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/query-cache/properties">>, [], BodyStr).
 
 % 用于AQL用户功能管理的HTTP接口
 % AQL用户功能管理
@@ -346,7 +346,7 @@ changeAqlQueryCacheProperties(PoolNameOrSocket, MapData) ->
 % errorMessage：描述性错误消息
 newAqlUserFun(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/aqlfunction">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/aqlfunction">>, [], BodyStr).
 
 % 删除现有的AQL用户功能
 % DELETE /_api/aqlfunction/{name}
@@ -372,7 +372,7 @@ newAqlUserFun(PoolNameOrSocket, MapData) ->
 % errorMessage：描述性错误消息
 delAqlUserFun(PoolNameOrSocket, UserFunName) ->
    Path = <<"/_api/aqlfunction/", (agMiscUtils:toBinary(UserFunName))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 
 % 返回注册的AQL用户功能
@@ -394,11 +394,11 @@ delAqlUserFun(PoolNameOrSocket, UserFunName) ->
 % errorNum：服务器错误号
 % errorMessage：描述性错误消息
 getAqlUserFuns(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/aqlfunction">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/aqlfunction">>, [], undefined).
 
 getAqlUserFuns(PoolNameOrSocket, Namespace) ->
    Path = <<"/_api/aqlfunction?namespace=", (agMiscUtils:toBinary(Namespace))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 
 

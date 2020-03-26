@@ -31,7 +31,7 @@
 % 409：如果已经存在同名用户，则返回。
 newUser(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/user">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/user">>, [], BodyStr).
 
 % 设置数据库访问级别。
 % PUT /_api/user/{user}/database/{dbname}
@@ -51,7 +51,7 @@ newUser(PoolNameOrSocket, MapData) ->
 setUserDbAccessLevel(PoolNameOrSocket, UserName, DbName, MapData) ->
    Path = <<"/_api/user/", UserName/binary, "/database/", DbName/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 % 设置收集访问级别。
 % PUT /_api/user/{user}/database/{dbname}/{collection}
@@ -72,7 +72,7 @@ setUserDbAccessLevel(PoolNameOrSocket, UserName, DbName, MapData) ->
 setUserCollAccessLevel(PoolNameOrSocket, UserName, DbName, CollName, MapData) ->
    Path = <<"/_api/user/", UserName/binary, "/database/", DbName/binary, "/", CollName/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 % 清除数据库访问级别，恢复为默认访问级别
 % DELETE /_api/user/{user}/database/{dbname}
@@ -85,7 +85,7 @@ setUserCollAccessLevel(PoolNameOrSocket, UserName, DbName, CollName, MapData) ->
 % 400：如果JSON格式不正确或请求中缺少必需数据。
 clearUserDbAccessLevel(PoolNameOrSocket, UserName, DbName) ->
    Path = <<"/_api/user/", UserName/binary, "/database/", DbName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 
 % 清除集合访问级别，恢复为默认访问级别
@@ -100,7 +100,7 @@ clearUserDbAccessLevel(PoolNameOrSocket, UserName, DbName) ->
 % 400：如果有错误
 clearUserCollAccessLevel(PoolNameOrSocket, UserName, DbName, CollName) ->
    Path = <<"/_api/user/", UserName/binary, "/database/", DbName/binary, "/", CollName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 % 列出用户的可访问数据库
 % GET /_api/user/{user}/database/
@@ -118,7 +118,7 @@ clearUserCollAccessLevel(PoolNameOrSocket, UserName, DbName, CollName) ->
 % 403：如果您没有访问服务器访问级别，则返回。
 getUserDbList(PoolNameOrSocket, UserName) ->
    Path = <<"/_api/user/", UserName/binary, "/database/">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 获取特定的数据库访问级别
 % GET /_api/user/{user}/database/{dbname}
@@ -133,7 +133,7 @@ getUserDbList(PoolNameOrSocket, UserName) ->
 % 403：如果您没有访问服务器访问级别，则返回。
 getUserDbAccessLevel(PoolNameOrSocket, UserName, DbName) ->
    Path = <<"/_api/user/", UserName/binary, "/database/", DbName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 获取集合访问级别
 % GET /_api/user/{user}/database/{dbname}/{collection}
@@ -149,7 +149,7 @@ getUserDbAccessLevel(PoolNameOrSocket, UserName, DbName) ->
 % 403：如果您没有访问服务器访问级别，则返回。
 getUserCollAccessLevel(PoolNameOrSocket, UserName, DbName, CollName) ->
    Path = <<"/_api/user/", UserName/binary, "/database/", DbName/binary, "/", CollName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 替换现有用户。
 % PUT /_api/user/{user}
@@ -169,7 +169,7 @@ getUserCollAccessLevel(PoolNameOrSocket, UserName, DbName, CollName) ->
 replaceUser(PoolNameOrSocket, UserName, MapData) ->
    Path = <<"/_api/user/", UserName/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 % 修改现有用的属性户
 % PATCH /_api/user/{user}
@@ -189,7 +189,7 @@ replaceUser(PoolNameOrSocket, UserName, MapData) ->
 modifyUser(PoolNameOrSocket, UserName, MapData) ->
    Path = <<"/_api/user/", UserName/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Patch, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPatch, Path, [], BodyStr).
 
 % 永久删除用户。
 % DELETE /_api/user/{user}
@@ -203,7 +203,7 @@ modifyUser(PoolNameOrSocket, UserName, MapData) ->
 % 404：指定的用户不存在
 delUser(PoolNameOrSocket, UserName) ->
    Path = <<"/_api/user/", UserName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 % 获取用户的属性。
 % GET /_api/user/{user}
@@ -217,7 +217,7 @@ delUser(PoolNameOrSocket, UserName) ->
 % 404：指定用户名不存在。
 getUser(PoolNameOrSocket, UserName) ->
    Path = <<"/_api/user/", UserName/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 列出可用的用户
 % GET /_api/user/
@@ -231,4 +231,4 @@ getUser(PoolNameOrSocket, UserName) ->
 % 401：如果您没有对_system 数据库的访问数据库访问级别，则返回。
 % 403：如果您没有访问服务器访问级别，则返回。
 getUserList(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/user/">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/user/">>, [], undefined).

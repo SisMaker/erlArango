@@ -16,7 +16,7 @@
 % HTTP 200任务列表
 % **：所有任务的列表
 getTaskList(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/tasks/">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/tasks/">>, [], undefined).
 
 % 检索一个当前活动的服务器任务
 % GET /_api/tasks/{id}
@@ -26,7 +26,7 @@ getTaskList(PoolNameOrSocket) ->
 % HTTP 200请求的任务
 getTask(PoolNameOrSocket, TaskId) ->
    Path = <<"/_api/tasks/", (agMiscUtils:toBinary(TaskId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 创建一个新任务
 % POST /_api/tasks
@@ -52,7 +52,7 @@ getTask(PoolNameOrSocket, TaskId) ->
 % 400：如果帖子正文不正确，则返回HTTP 400。
 newTask(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/tasks">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/tasks">>, [], BodyStr).
 
 % 注册具有预定义ID的新任务；与负载均衡器不兼容
 % PUT /_api/tasks/{id}
@@ -70,7 +70,7 @@ newTask(PoolNameOrSocket, MapData) ->
 newTask(PoolNameOrSocket, TaskId, MapData) ->
    Path = <<"/_api/tasks/", (agMiscUtils:toBinary(TaskId))/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 % 删除一个当前活动的服务器任务
 % DELETE /_api/tasks/{id}
@@ -86,4 +86,4 @@ newTask(PoolNameOrSocket, TaskId, MapData) ->
 % errorMessage：一条纯文本消息，指出出了什么问题。
 delTask(PoolNameOrSocket, TaskId) ->
    Path = <<"/_api/tasks/", (agMiscUtils:toBinary(TaskId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).

@@ -41,7 +41,7 @@
 getRepInventory(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/replication/inventory", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 处理转储批处理命令
 % POST /_api/replication/batch
@@ -59,7 +59,7 @@ getRepInventory(PoolNameOrSocket, QueryPars) ->
 % 405：使用无效的HTTP方法时返回。
 newRepBatch(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/replication/batch">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/replication/batch">>, [], BodyStr).
 
 
 % 删除现有的转储批次
@@ -76,7 +76,7 @@ newRepBatch(PoolNameOrSocket, MapData) ->
 % 405：使用无效的HTTP方法时返回。
 delRepBatch(PoolNameOrSocket, BatchId) ->
    Path = <<"/_api/replication/batch/", (agMiscUtils:toBinary(BatchId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], undefined).
 
 
 % 处理转储批处理命令
@@ -99,7 +99,7 @@ delRepBatch(PoolNameOrSocket, BatchId) ->
 prolongRepBatch(PoolNameOrSocket, BatchId, MapData) ->
    Path = <<"/_api/replication/batch/", (agMiscUtils:toBinary(BatchId))/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 % 返回一个集合的全部内容
 % GET /_api/replication/dump
@@ -138,7 +138,7 @@ prolongRepBatch(PoolNameOrSocket, BatchId, MapData) ->
 getRepDump(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/replication/dump", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 从远程端点同步数据
 % 开始复制
@@ -170,7 +170,7 @@ getRepDump(PoolNameOrSocket, QueryPars) ->
 % 501：在集群中的协调器上调用此操作时返回。
 startRepSync(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_api/replication/sync">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/sync">>, [], BodyStr).
 
 % 返回集合和索引的集群清单
 % 重建集群中的集合和索引的概述
@@ -186,7 +186,7 @@ startRepSync(PoolNameOrSocket, MapData) ->
 getRepClusterInventory(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/replication/clusterInventory", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 复制记录器命令
 % 返回复制记录器的状态
@@ -211,7 +211,7 @@ getRepClusterInventory(PoolNameOrSocket, QueryPars) ->
 % 405：使用无效的HTTP方法时返回。
 % 500：如果无法确定记录器状态，则返回。
 getRepLoggerState(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/replication/logger-state">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/logger-state">>, [], undefined).
 
 % 返回日志条目永久链接固定链接
 % 从服务器获取日志行
@@ -265,7 +265,7 @@ getRepLoggerState(PoolNameOrSocket) ->
 % 500：如果组装响应时发生错误，则返回500。
 % 501：在集群中的协调器上调用此操作时返回。
 getRepLoggerFirstTick(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/replication/logger-first-tick">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/logger-first-tick">>, [], undefined).
 
 % 返回日志文件中可用的刻度值范围
 % GET /_api/replication/logger-tick-ranges
@@ -281,7 +281,7 @@ getRepLoggerFirstTick(PoolNameOrSocket) ->
 % 500：如果无法确定记录器状态，则返回。
 % 501：在集群中的协调器上调用此操作时返回。
 getRepLoggerTickRanges(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/replication/logger-tick-ranges">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/logger-tick-ranges">>, [], undefined).
 
 % 复制应用程序命令
 % applier命令允许远程启动，停止和查询ArangoDB数据库复制应用程序的状态和配置。
@@ -317,14 +317,14 @@ getRepLoggerTickRanges(PoolNameOrSocket) ->
 % 405：使用无效的HTTP方法时返回。
 % 500：如果组装响应时发生错误，则返回500。
 getRepApplierConfig(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/replication/applier-config">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-config">>, [], undefined).
 
 getRepApplierConfig(PoolNameOrSocket, IsGlobal) ->
    case IsGlobal of
       true ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/replication/applier-config?global=true">>, [], undefined);
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-config?global=true">>, [], undefined);
       _ ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/replication/applier-config">>, [], undefined)
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-config">>, [], undefined)
    end.
 
 % 设置申请者的配置值
@@ -363,15 +363,15 @@ getRepApplierConfig(PoolNameOrSocket, IsGlobal) ->
 % 500：如果组装响应时发生错误，则返回500。
 setRepApplierConfig(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_api/replication/applier-config">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-config">>, [], BodyStr).
 
 setRepApplierConfig(PoolNameOrSocket, MapData, IsGlobal) ->
    BodyStr = jiffy:encode(MapData),
    case IsGlobal of
       true ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_api/replication/applier-config?global=true">>, [], BodyStr);
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-config?global=true">>, [], BodyStr);
       _ ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_api/replication/applier-config">>, [], BodyStr)
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-config">>, [], BodyStr)
    end.
 
 % 启动复制应用程序
@@ -388,12 +388,12 @@ setRepApplierConfig(PoolNameOrSocket, MapData, IsGlobal) ->
 % 405：使用无效的HTTP方法时返回。
 % 500：如果组装响应时发生错误，则返回500。
 startRepApplier(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_api/replication/applier-start">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-start">>, [], undefined).
 
 startRepApplier(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/replication/applier-start", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
 % 停止复制
 % PUT /_api/replication/applier-stop
@@ -405,14 +405,14 @@ startRepApplier(PoolNameOrSocket, QueryPars) ->
 % 405：使用无效的HTTP方法时返回。
 % 500：如果组装响应时发生错误，则返回500。
 stopRepApplier(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_api/replication/applier-stop">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-stop">>, [], undefined).
 
 stopRepApplier(PoolNameOrSocket, IsGlobal) ->
    case IsGlobal of
       true ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_api/replication/applier-stop?global=true">>, [], undefined);
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-stop?global=true">>, [], undefined);
       _ ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_api/replication/applier-stop">>, [], undefined)
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-stop">>, [], undefined)
    end.
 
 % 输出复制的当前状态
@@ -455,14 +455,14 @@ stopRepApplier(PoolNameOrSocket, IsGlobal) ->
 % 405：使用无效的HTTP方法时返回。
 % 500：如果组装响应时发生错误，则返回500。
 getRepApplierState(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/replication/applier-state">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-state">>, [], undefined).
 
 getRepApplierState(PoolNameOrSocket, IsGlobal) ->
    case IsGlobal of
       true ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/replication/applier-state?global=true">>, [], undefined);
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-state?global=true">>, [], undefined);
       _ ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/replication/applier-state">>, [], undefined)
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-state">>, [], undefined)
    end.
 
 
@@ -533,7 +533,7 @@ getRepApplierState(PoolNameOrSocket, IsGlobal) ->
 % 501：在集群中的协调器上调用此操作时返回。
 changeRepMakeSlave(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_api/replication/make-slave">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/make-slave">>, [], BodyStr).
 
 %其他复制命令
 %返回服务器ID
@@ -546,7 +546,7 @@ changeRepMakeSlave(PoolNameOrSocket, MapData) ->
 %405：使用无效的HTTP方法时返回。
 %500：如果组装响应时发生错误，则返回500。
 getRepServerId(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/replication/server-id">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/server-id">>, [], undefined).
 
 % WAL 固定链接操作中可用的返回刻度范围
 % 返回预写日志中可用的刻度线范围
@@ -563,7 +563,7 @@ getRepServerId(PoolNameOrSocket) ->
 % 500：如果无法确定服务器操作状态，则返回。
 % 501：在集群中的协调器上调用此操作时返回。
 getWalRange(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/wal/range">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/wal/range">>, [], undefined).
 
 % 返回最后一个可用的刻度值固定链接
 % 返回最后一个可用的刻度值
@@ -580,7 +580,7 @@ getWalRange(PoolNameOrSocket) ->
 % 500：如果组装响应时发生错误，则返回500。
 % 501：在集群中的协调器上调用此操作时返回。
 getWalLastTick(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/wal/lastTick">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/wal/lastTick">>, [], undefined).
 
 % 获取最近的操作
 % GET /_api/wal/tail
@@ -626,10 +626,10 @@ getWalLastTick(PoolNameOrSocket) ->
 % 500：如果组装响应时发生错误，则返回500。
 % 501：在集群中的协调器上调用此操作时返回。
 getWalTail(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/wal/tail">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/wal/tail">>, [], undefined).
 
 getWalTail(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/wal/tail", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 

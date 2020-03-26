@@ -48,7 +48,7 @@
 % 404：如果找不到或已经从作业结果列表中删除或提取了作业，则返回404。在这种情况下，不会返回x-arango-async-id HTTP标头。
 getAsyncJobRet(PoolNameOrSocket, JodId) ->
    Path = <<"/_api/job/", (agMiscUtils:toBinary(JodId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
 
 % 取消异步作业
@@ -62,7 +62,7 @@ getAsyncJobRet(PoolNameOrSocket, JodId) ->
 % 404：如果找不到或已经从作业结果列表中删除或提取了作业，则返回404。在这种情况下，不会返回x-arango-async-id HTTP标头。
 cancelAsyncJob(PoolNameOrSocket, JodId) ->
    Path = <<"/_api/job/", (agMiscUtils:toBinary(JodId))/binary, "/cancel">>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
 % 删除异步作业结果
 % DELETE /_api/job/{type}#by-type
@@ -86,7 +86,7 @@ delAsyncJobRet(PoolNameOrSocket, TypeOrJodId, Stamp) ->
          _ ->
             <<"/_api/job/", (agMiscUtils:toBinary(TypeOrJodId))/binary>>
       end,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 
 % 返回特定作业的状态
@@ -100,7 +100,7 @@ delAsyncJobRet(PoolNameOrSocket, TypeOrJodId, Stamp) ->
 % 404：如果找不到或已经从作业结果列表中删除或提取了作业，则返回404。
 getAsyncJobStatus(PoolNameOrSocket, JodId) ->
    Path = <<"/_api/job/", (agMiscUtils:toBinary(JodId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 
 % 返回具有特定状态的工作结果ID
@@ -115,9 +115,9 @@ getAsyncJobStatus(PoolNameOrSocket, JodId) ->
 % 400：如果未指定type或值无效，则返回。
 getAsyncJobList(PoolNameOrSocket, Type) ->
    Path = <<"/_api/job/", (agMiscUtils:toBinary(Type))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 getAsyncJobList(PoolNameOrSocket, Type, Count) ->
    Path = <<"/_api/job/", (agMiscUtils:toBinary(Type))/binary, "?count=", (agMiscUtils:toBinary(Count))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 

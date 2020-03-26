@@ -36,16 +36,9 @@
    , isSystem = false :: boolean()
 }).
 
--record(miAgHttpCliRet, {
+-record(miRequestRet, {
    requestId :: requestId(),
    reply :: term()
-}).
-
--record(requestRet, {
-   statusCode :: undefined | 100..505,
-   contentLength :: undefined | non_neg_integer() | chunked,
-   headers :: undefined | [binary()],
-   body :: undefined | binary()
 }).
 
 -record(recvState, {
@@ -107,8 +100,7 @@
 }).
 
 -type miRequest() :: #miRequest{}.
--type miAgHttpCliRet() :: #miAgHttpCliRet{}.
--type requestRet() :: #requestRet{}.
+-type miRequestRet() :: #miRequestRet{}.
 -type recvState() :: #recvState{}.
 -type srvState() :: #srvState{}.
 -type cliState() :: #cliState{}.

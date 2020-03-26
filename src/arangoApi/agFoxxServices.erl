@@ -29,14 +29,14 @@
 % 返回码
 % 200：如果请求成功，则返回。
 getFoxxList(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/foxx">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/foxx">>, [], undefined).
 
 getFoxxList(PoolNameOrSocket, ExcludeSystem) ->
    case ExcludeSystem of
       true ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/foxx?excludeSystem=true">>, [], undefined);
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/foxx?excludeSystem=true">>, [], undefined);
       _ ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/foxx?excludeSystem=false">>, [], undefined)
+         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/foxx?excludeSystem=false">>, [], undefined)
    end.
 
 % 服务说明
@@ -58,7 +58,7 @@ getFoxxList(PoolNameOrSocket, ExcludeSystem) ->
 % 400：如果安装路径未知，则返回。
 getFoxxService(PoolNameOrSocket, Mount) ->
    Path = <<"/_api/foxx/service?mount=", (agMiscUtils:toBinary(Mount))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 
 % 安装新服务
@@ -89,7 +89,7 @@ installFoxx(PoolNameOrSocket, MapData, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx", QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 
 % 卸载服务
@@ -104,7 +104,7 @@ installFoxx(PoolNameOrSocket, MapData, QueryPars) ->
 uninstallFoxx(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/service", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 % 更换服务
 % PUT /_api/foxx/service
@@ -135,7 +135,7 @@ replaceFoxx(PoolNameOrSocket, MapData, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/service", QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 % 升级服务
 % PATCH /_api/foxx/service
@@ -166,7 +166,7 @@ upgradeFoxx(PoolNameOrSocket, MapData, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/service", QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Patch, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPatch, Path, [], BodyStr).
 
 % Foxx服务配置/依赖关系
 % 这是用于管理Foxx服务配置和依赖关系的ArangoDB HTTP接口的简介。
@@ -182,7 +182,7 @@ upgradeFoxx(PoolNameOrSocket, MapData, QueryPars) ->
 getFoxxConfig(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/configuration", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 更新配置选项
 % PATCH /_api/foxx/configuration
@@ -198,7 +198,7 @@ updateFoxxConfig(PoolNameOrSocket, MapData, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/configuration", QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Patch, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPatch, Path, [], BodyStr).
 
 % 替换配置选项
 % PUT /_api/foxx/configuration
@@ -214,7 +214,7 @@ replaceFoxxConfig(PoolNameOrSocket, MapData, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/configuration", QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 % 获取依赖项选项
 % GET /_api/foxx/dependencies
@@ -227,7 +227,7 @@ replaceFoxxConfig(PoolNameOrSocket, MapData, QueryPars) ->
 getFoxxDependencies(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/dependencies", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 
 % 更新依赖项选项
@@ -244,7 +244,7 @@ updateFoxxDependencies(PoolNameOrSocket, MapData, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/dependencies", QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Patch, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPatch, Path, [], BodyStr).
 
 % 替换依赖项选项
 % PUT /_api/foxx/dependencies
@@ -260,7 +260,7 @@ replaceFoxxDependencies(PoolNameOrSocket, MapData, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/dependencies", QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
 % Foxx服务杂项
 %
@@ -275,7 +275,7 @@ replaceFoxxDependencies(PoolNameOrSocket, MapData, QueryPars) ->
 getFoxxScripts(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/scripts", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 运行服务脚本
 % POST /_api/foxx/scripts/{name}
@@ -293,7 +293,7 @@ runFoxxScripts(PoolNameOrSocket, ScriptName, MapData, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/scripts/", ScriptName/binary, QueryBinary/binary>>,
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], BodyStr).
 
 % 运行服务测试
 % POST /_api/foxx/tests
@@ -319,7 +319,7 @@ runFoxxScripts(PoolNameOrSocket, ScriptName, MapData, QueryPars) ->
 runFoxxTest(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/tests", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], undefined).
 
 
 % 启用开发模式
@@ -336,7 +336,7 @@ runFoxxTest(PoolNameOrSocket, QueryPars) ->
 enableFoxxDevelopment(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/development", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], undefined).
 
 % 禁用开发模式
 % DELETE /_api/foxx/development
@@ -349,7 +349,7 @@ enableFoxxDevelopment(PoolNameOrSocket, QueryPars) ->
 disableFoxxDevelopment(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/development", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 
 % 服务自述文件
@@ -363,7 +363,7 @@ disableFoxxDevelopment(PoolNameOrSocket, QueryPars) ->
 getFoxxReadme(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/readme", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 招摇说明
 % GET /_api/foxx/swagger
@@ -376,7 +376,7 @@ getFoxxReadme(PoolNameOrSocket, QueryPars) ->
 getFoxxSwagger(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/swagger", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 下载服务包
 % POST /_api/foxx/download
@@ -391,7 +391,7 @@ getFoxxSwagger(PoolNameOrSocket, QueryPars) ->
 downloadFoxxBundle(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/download", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], undefined).
 
 % 提交本地服务状态
 % POST /_api/foxx/commit
@@ -404,4 +404,4 @@ downloadFoxxBundle(PoolNameOrSocket, QueryPars) ->
 commitFoxxState(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/foxx/commit", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], undefined).

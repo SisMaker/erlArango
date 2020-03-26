@@ -54,7 +54,7 @@ agencyReply({undefined, _RequestId, TimerRef}, _Reply) ->
    agAgencyUtils:cancelTimer(TimerRef);
 agencyReply({PidForm, RequestId, TimerRef}, Reply) ->
    agAgencyUtils:cancelTimer(TimerRef),
-   catch PidForm ! #miAgHttpCliRet{requestId = RequestId, reply = Reply},
+   catch PidForm ! #miRequestRet{requestId = RequestId, reply = Reply},
    ok;
 agencyReply(undefined, _RequestRet) ->
    ok.
@@ -65,7 +65,7 @@ agencyReply(undefined, _RequestId, TimerRef, _Reply) ->
    ok;
 agencyReply(FormPid, RequestId, TimerRef, Reply) ->
    agAgencyUtils:cancelTimer(TimerRef),
-   catch FormPid ! #miAgHttpCliRet{requestId = RequestId, reply = Reply},
+   catch FormPid ! #miRequestRet{requestId = RequestId, reply = Reply},
    ok.
 
 -spec agencyReplyAll(term()) -> ok.

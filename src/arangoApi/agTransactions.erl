@@ -38,7 +38,7 @@
 % errorMessage：描述性错误消息
 beginTransaction(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/transaction/begin">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/transaction/begin">>, [], BodyStr).
 
 % 获取交易状态
 % 提取服务器端事务的状态
@@ -54,7 +54,7 @@ beginTransaction(PoolNameOrSocket, MapData) ->
 % 404：如果找不到具有指定标识符的交易，则服务器将使用HTTP 404进行响应。
 getTransactionStatus(PoolNameOrSocket, TransactionId) ->
    Path = <<"/_api/transaction/", (agMiscUtils:toBinary(TransactionId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 
 % 提交服务器端事务
@@ -81,7 +81,7 @@ getTransactionStatus(PoolNameOrSocket, TransactionId) ->
 % 409：如果事务已经中止，则服务器将使用HTTP 409进行响应。
 commitTransaction(PoolNameOrSocket, TransactionId) ->
    Path = <<"/_api/transaction/", (agMiscUtils:toBinary(TransactionId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
 % 中止服务器端事务
 % DELETE /_api/transaction/{transaction-id}
@@ -107,7 +107,7 @@ commitTransaction(PoolNameOrSocket, TransactionId) ->
 % 409：如果事务已经提交，则服务器将以HTTP 409响应。
 abortTransaction(PoolNameOrSocket, TransactionId) ->
    Path = <<"/_api/transaction/", (agMiscUtils:toBinary(TransactionId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
 % 返回当前运行的服务器端事务
 % GET /_api/transaction
@@ -118,7 +118,7 @@ abortTransaction(PoolNameOrSocket, TransactionId) ->
 % 返回码
 % 200：如果可以成功检索事务列表，则将返回HTTP 200
 getTransactionList(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/transaction">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/transaction">>, [], undefined).
 
 % JavaScript交易的HTTP接口
 % ArangoDB的JS事务在服务器上执行。客户端可以通过将事务描述发送给服务器来启动事务。
@@ -155,7 +155,7 @@ getTransactionList(PoolNameOrSocket) ->
 % 500：用户抛出的异常将使服务器以HTTP 500的返回码进行响应
 executeTransaction(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/transaction">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/transaction">>, [], BodyStr).
 
 
 

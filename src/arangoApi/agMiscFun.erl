@@ -48,12 +48,12 @@
 % 模式：我们作为-[ 服务器，控制台，脚本 ]中的一种运行的模式
 % host：主机ID
 getSrvVersion(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/version">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/version">>, [], undefined).
 
 getSrvVersion(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/version", QueryBinary/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
 % 返回运行服务器的引擎类型
 % GET /_api/engine
@@ -61,7 +61,7 @@ getSrvVersion(PoolNameOrSocket, QueryPars) ->
 % 在所有情况下均返回HTTP 200。
 % 名称：将是mmfiles或rocksdb
 getSrvEngine(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/engine">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/engine">>, [], undefined).
 
 % 将WAL同步到磁盘。
 % PUT /_admin/wal/flush
@@ -73,7 +73,7 @@ getSrvEngine(PoolNameOrSocket) ->
 % 200：操作成功返回。
 % 405：使用无效的HTTP方法时返回。
 flushWal(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_admin/wal/flush">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_admin/wal/flush">>, [], undefined).
 
 % 检索预写日志的配置永久链接
 % 获取当前配置。
@@ -90,7 +90,7 @@ flushWal(PoolNameOrSocket) ->
 % 200：操作成功返回。
 % 405：使用无效的HTTP方法时返回。
 getWalProperties(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/wal/properties">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/wal/properties">>, [], undefined).
 
 % 配置预写日志永久链接
 % 配置沃尔玛的参数
@@ -108,7 +108,7 @@ getWalProperties(PoolNameOrSocket) ->
 % 405：使用无效的HTTP方法时返回。
 setWalProperties(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Put, <<"/_admin/wal/properties">>, BodyStr, undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_admin/wal/properties">>, BodyStr, undefined).
 
 % 关于当前运行的事务返回信息永久链接
 % 返回有关当前正在运行的事务的信息
@@ -121,7 +121,7 @@ setWalProperties(PoolNameOrSocket, MapData) ->
 % 200：操作成功返回。
 % 405：使用无效的HTTP方法时返回。
 getTransactions(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/wal/transactions">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/wal/transactions">>, [], undefined).
 
 % 返回系统时间固定链接
 % 获取系统的当前时间
@@ -132,7 +132,7 @@ getTransactions(PoolNameOrSocket) ->
 % code：HTTP状态码
 % time：当前系统时间（以Unix时间戳记为单位，服务器以微秒为单位）
 getDbTime(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/time">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/time">>, [], undefined).
 
 % 发回所发送的内容，标题，帖子正文等。
 % POST /_admin/echo
@@ -164,7 +164,7 @@ getDbTime(PoolNameOrSocket) ->
 % path：此请求的相对路径
 % rawRequestBody：已发送字符的数字列表
 echo(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_admin/echo">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_admin/echo">>, [], undefined).
 
 % 返回数据库的版本。
 % GET /_admin/database/target-version
@@ -172,7 +172,7 @@ echo(PoolNameOrSocket) ->
 % 返回码
 % 200：在所有情况下均返回。
 getTargetVersion(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/database/target-version">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/database/target-version">>, [], undefined).
 
 % 启动关机序列
 % DELETE /_admin/shutdown
@@ -180,7 +180,7 @@ getTargetVersion(PoolNameOrSocket) ->
 % 返回码
 % 200：在所有情况下OK都将返回，成功时将在结果缓冲区中返回。
 shutDown(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, <<"/_admin/shutdown">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, <<"/_admin/shutdown">>, [], undefined).
 
 
 % 在服务器上执行脚本。
@@ -196,7 +196,7 @@ shutDown(PoolNameOrSocket) ->
 % 404：如果未为群集操作编译ArangoDB，则返回404。
 execute(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_admin/execute">>, [], BodyStr).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_admin/execute">>, [], BodyStr).
 
 % 返回服务器的状态信息。
 % GET /_admin/status
@@ -230,5 +230,5 @@ execute(PoolNameOrSocket, MapData) ->
 % 返回码
 % 200：状态信息返回成功
 getDbStatus(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_admin/status">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/status">>, [], undefined).
 

@@ -8,17 +8,17 @@
 %% 检索有关当前数据库的信息（别名 /_api/database/properties）
 %% GET /_api/database/current
 curDbInfo(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/database/current">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/database/current">>, [], undefined).
 
 %% 检索当前用户可以访问的所有数据库的列表
 %% GET /_api/database/user
 curVisitDbs(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/database/user">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/database/user">>, [], undefined).
 
 %% 检索所有现有数据库的列表
 %% GET /_api/database
 curDbList(PoolNameOrSocket) ->
-   agHttpCli:callAgency(PoolNameOrSocket, ?Get, <<"/_api/database">>, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/database">>, [], undefined).
 
 
 %% 创建一个新的数据库
@@ -42,11 +42,11 @@ curDbList(PoolNameOrSocket) ->
 
 newDb(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
-   agHttpCli:callAgency(PoolNameOrSocket, ?Post, <<"/_api/database">>, [], BodyStr, true).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/database">>, [], BodyStr, true).
 
 %% 删除现有数据库
 %% DELETE /_api/database/{database-name}
 
 delDb(PoolNameOrSocket, Name) ->
    Path = <<"/_api/database/", Name/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?Delete, Path, [], undefined, true).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined, true).
