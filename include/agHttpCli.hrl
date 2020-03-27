@@ -7,8 +7,9 @@
 
 %% 默认值定义
 -define(DEFAULT_BASE_URL, <<"http://120.77.213.39:8529">>).
--define(DEFAULT_DBNAME, <<"_db/_system">>).
--define(USER_PASSWORD, <<"root:156736">>).
+-define(DEFAULT_DBNAME, <<"_system">>).
+-define(DEFAULT_USER, <<"root">>).
+-define(DEFAULT_PASSWORD, <<"156736">>).
 -define(DEFAULT_BACKLOG_SIZE, 1024).
 -define(DEFAULT_CONNECT_TIMEOUT, 5000).
 -define(DEFAULT_POOL_SIZE, 16).
@@ -17,7 +18,7 @@
 -define(DEFAULT_RECONNECT_MAX, 120000).
 -define(DEFAULT_TIMEOUT, infinity).
 -define(DEFAULT_PID, self()).
--define(DEFAULT_SOCKET_OPTS, [binary, {active, true}, {nodelay, true}, {delay_send, true}, {keepalive, true}, {recbuf, 2097152}, {send_timeout, 5000}, {send_timeout_close, true}]).
+-define(DEFAULT_SOCKET_OPTS, [binary, {active, true}, {nodelay, true}, {delay_send, true}, {keepalive, true}, {recbuf,1048576}, {send_timeout, 5000}, {send_timeout_close, true}]).
 
 -define(GET_FROM_LIST(Key, List), agMiscUtils:getListValue(Key, List, undefined)).
 -define(GET_FROM_LIST(Key, List, Default), agMiscUtils:getListValue(Key, List, Default)).
@@ -126,7 +127,8 @@
 -type dbCfg() ::
    {baseUrl, binary()} |
    {dbName, binary()} |
-   {userPassword, binary()} |
+   {user, binary()} |
+   {password, binary()} |
    {poolSize, poolSize()} |
    {socketOpts, [gen_tcp:connect_option(), ...]}.
 
