@@ -18,7 +18,7 @@
 -define(DEFAULT_RECONNECT_MAX, 120000).
 -define(DEFAULT_TIMEOUT, infinity).
 -define(DEFAULT_PID, self()).
--define(DEFAULT_SOCKET_OPTS, [binary, {active, true}, {nodelay, true}, {delay_send, true}, {keepalive, true}, {recbuf,1048576}, {send_timeout, 5000}, {send_timeout_close, true}]).
+-define(DEFAULT_SOCKET_OPTS, [binary, {active, true}, {nodelay, true}, {delay_send, true}, {keepalive, true}, {recbuf, 1048576}, {send_timeout, 5000}, {send_timeout_close, true}]).
 
 -define(GET_FROM_LIST(Key, List), agMiscUtils:getListValue(Key, List, undefined)).
 -define(GET_FROM_LIST(Key, List, Default), agMiscUtils:getListValue(Key, List, Default)).

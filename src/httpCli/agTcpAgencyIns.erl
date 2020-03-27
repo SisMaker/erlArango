@@ -62,8 +62,8 @@ handleMsg({tcp, Socket, Data},
    #srvState{serverName = ServerName, rn = Rn, rnrn = RnRn, socket = Socket} = SrvState,
    #cliState{isHeadMethod = IsHeadMethod, backlogNum = BacklogNum, curInfo = CurInfo, requestsOut = RequestsOut, recvState = RecvState} = CliState) ->
    try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
-      {done, #recvState{headers = Headers, body = Body}} ->
-         agAgencyUtils:agencyReply(CurInfo, {ok, Headers, Body}),
+      {done, #recvState{statusCode = StatusCode, headers = Headers, body = Body}} ->
+         agAgencyUtils:agencyReply(CurInfo, {ok, Body, StatusCode, Headers}),
          case agAgencyUtils:getQueue(RequestsOut + 1) of
             undefined ->
                {ok, SrvState, CliState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined, recvState = undefined}};
@@ -191,8 +191,8 @@ overReceiveTcpData(#srvState{poolName = PoolName, serverName = ServerName, rn = 
    receive
       {tcp, Socket, Data} ->
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
-            {done, #recvState{headers = Headers, body = Body}} ->
-               agAgencyUtils:agencyReply(CurInfo, {ok, Headers, Body}),
+            {done, #recvState{statusCode = StatusCode, headers = Headers, body = Body}} ->
+               agAgencyUtils:agencyReply(CurInfo, {ok, Body, StatusCode, Headers}),
                case agAgencyUtils:getQueue(RequestsOut + 1) of
                   undefined ->
                      {ok, SrvState, CliState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined, recvState = undefined}};

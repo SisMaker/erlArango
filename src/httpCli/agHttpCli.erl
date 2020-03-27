@@ -115,9 +115,12 @@ receiveRequestRet(RequestId, MonitorRef) ->
    receive
       #miRequestRet{requestId = RequestId, reply = Reply} ->
          erlang:demonitor(MonitorRef),
+         % io:format("IMY********receiveRequestRet ~p~n", [Reply]),
          case Reply of
-            {ok, Headers, Body} ->
-               {ok, Headers, jiffy:decode(Body, [return_maps, copy_strings])};
+            {ok, <<>>, _StatusCode, _Headers} ->
+               erlang:setelement(2, Reply, #{});
+            {ok, Body, _StatusCode, _Headers} ->
+               erlang:setelement(2, Reply, jiffy:decode(Body, [return_maps, copy_strings]));
             _ ->
                Reply
          end;
@@ -130,8 +133,13 @@ receiveTcpData(RecvState, Socket, Rn, RnRn, IsHeadMethod) ->
    receive
       {tcp, Socket, Data} ->
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
-            {done, #recvState{headers = Headers, body = Body}} ->
-               {ok, Headers, jiffy:decode(Body, [return_maps, copy_strings])};
+            {done, #recvState{statusCode = StatusCode, headers = Headers, body = Body}} ->
+               case Body of
+                  <<>> ->
+                     {ok, #{}, StatusCode, Headers};
+                  _ ->
+                     {ok, jiffy:decode(Body, [return_maps, copy_strings]), StatusCode, Headers}
+               end;
             {ok, NewRecvState} ->
                receiveTcpData(NewRecvState, Socket, Rn, RnRn, IsHeadMethod);
             {error, Reason} ->
@@ -157,8 +165,13 @@ receiveSslData(RecvState, Socket, Rn, RnRn, IsHeadMethod) ->
    receive
       {ssl, Socket, Data} ->
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
-            {done, #recvState{headers = Headers, body = Body}} ->
-               {ok, Headers, jiffy:decode(Body, [return_maps, copy_strings])};
+            {done, #recvState{statusCode = StatusCode, headers = Headers, body = Body}} ->
+               case Body of
+                  <<>> ->
+                     {ok, #{}, StatusCode, Headers};
+                  _ ->
+                     {ok, jiffy:decode(Body, [return_maps, copy_strings]), StatusCode, Headers}
+               end;
             {ok, NewRecvState} ->
                receiveSslData(NewRecvState, Socket, Rn, RnRn, IsHeadMethod);
             {error, Reason} ->
