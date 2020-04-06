@@ -175,7 +175,6 @@ collResponsibleShard(PoolNameOrSocket, CollName, MapData) ->
    BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], BodyStr).
 
-% 返回集合永久链接的分片 ID
 % 返回集合的分片ID
 % 默认情况下，返回带有集合的分片ID的JSON数组。
 % 如果details参数设置为true，它将返回一个以分片ID作为对象属性键的JSON对象，并将每个分片的负责服务器映射到它们。在详细的响应中，领导者碎片将排在阵列的首位。
@@ -255,12 +254,11 @@ collList(PoolNameOrSocket, IsExcludeSystem) ->
 % 请求主体对象可以选择包含以下属性：
 % count：如果设置，则控制返回值是否应包括集合中的文档数。将count设置为 false可以加快加载集合的速度。为默认值 数为true。
 % PUT /_api/collection/{collection-name}/load
-collLoad(PoolNameOrSocket, CollName) ->
+loadColl(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/load">>,
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
-
-collLoad(PoolNameOrSocket, CollName, IsCount) ->
+loadColl(PoolNameOrSocket, CollName, IsCount) ->
    case IsCount of
       false ->
          Path = <<"/_api/collection/", CollName/binary, "/load">>,
@@ -282,7 +280,7 @@ collLoad(PoolNameOrSocket, CollName, IsCount) ->
 %    3：边缘收集
 % isSystem：如果为true，则该集合为系统集合。
 
-collUnload(PoolNameOrSocket, CollName) ->
+unloadColl(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", CollName/binary, "/unload">>,
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
 
@@ -347,7 +345,7 @@ collChangeProperties(PoolNameOrSocket, CollName, MapData) ->
 % isSystem：如果为true，则该集合为系统集合。
 % 如果重命名集合成功，那么该集合还将_graphs在当前数据库中该集合内的所有图形定义中重命名。
 % 注意：此方法在群集中不可用。
-collRename(PoolNameOrSocket, OldName, NewName) ->
+renameColl(PoolNameOrSocket, OldName, NewName) ->
    Path = <<"/_api/collection/", OldName/binary, "/rename">>,
    NameStr = jiffy:encode(NewName),
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], <<"{\"name\":", NameStr/binary, "}">>).
