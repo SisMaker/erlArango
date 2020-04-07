@@ -6,7 +6,7 @@
 -define(agBeamAgency, agBeamAgency).
 
 %% 默认值定义
--define(DEFAULT_BASE_URL, <<"http://120.77.213.39:8529">>).
+-define(DEFAULT_BASE_URL, <<"http://127.0.0.1:8529">>).
 -define(DEFAULT_DBNAME, <<"_system">>).
 -define(DEFAULT_USER, <<"root">>).
 -define(DEFAULT_PASSWORD, <<"156736">>).

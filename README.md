@@ -4,8 +4,8 @@
     
 ## 特点
   高效，快速，简单易用。
-  1. 为了该驱动尽可能的高效,定制化封装了一个带连接池的http1.1的客户端(httpCli) 
-  封装的httpCli与同类http客户端测试对比可参考:https://github.com/SisMaker/httpc_bench。
+  1. 为了该驱动尽可能的高效,定制化封装了一个带连接池的http1.1的客户端(agHttpCli) 
+  封装的agHttpCli与同类http客户端测试对比可参考:https://github.com/SisMaker/httpc_bench。
   2. 为了更加快速的decode和encode json数据，json库引入了jiffy，经过测试jiffy效率还是很不错的。
   3.  该驱动可以使用连接池，也可以仅仅在单进程(非连接池模式)建立多个连接进行各种数据操作。使用连接池时支持同步与异步操作，如果要使用异步操作需要额外保存requestId
   等待接收数据返回，当前改驱动封装的API均使用同步操作，如果需要异步操作可自行修改。单进程操作时仅支持同步操作。
