@@ -15,13 +15,13 @@
 -spec request(boolean(), body(), method(), host(), binary(), path(), headers()) -> iolist().
 request(true, undefined, Method, Host, _DbName, Path, Headers) ->
    [
-      Method, Path, <<" HTTP/1.1\r\nHost: ">>, Host, <<"_db/_system">>,
+      Method, <<"/_db/_system">>, Path, <<" HTTP/1.1\r\nHost: ">>, Host,
       <<"\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 0\r\n">>,
       spellHeaders(Headers), <<"\r\n">>
    ];
 request(false, undefined, Method, Host, DbName, Path, Headers) ->
    [
-      Method, Path, <<" HTTP/1.1\r\nHost: ">>, Host, DbName,
+      Method, DbName, Path, <<" HTTP/1.1\r\nHost: ">>, Host,
       <<"\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 0\r\n">>,
       spellHeaders(Headers), <<"\r\n">>
    ];
@@ -29,7 +29,7 @@ request(false, Body, Method, Host, DbName, Path, Headers) ->
    ContentLength = integer_to_binary(iolist_size(Body)),
    NewHeaders = [{<<"Content-Length">>, ContentLength} | Headers],
    [
-      Method, Path, <<" HTTP/1.1\r\nHost: ">>, Host, DbName,
+      Method, DbName, Path, <<" HTTP/1.1\r\nHost: ">>, Host,
       <<"\r\nContent-Type: application/json; charset=utf-8\r\n">>,
       spellHeaders(NewHeaders), <<"\r\n">>, Body
    ];
@@ -37,7 +37,7 @@ request(true, Body, Method, Host, _DbName, Path, Headers) ->
    ContentLength = integer_to_binary(iolist_size(Body)),
    NewHeaders = [{<<"Content-Length">>, ContentLength} | Headers],
    [
-      Method, Path, <<" HTTP/1.1\r\nHost: ">>, Host, <<"_db/_system">>,
+      Method,  <<"/_db/_system">>, Path, <<" HTTP/1.1\r\nHost: ">>, Host,
       <<"\r\nContent-Type: application/json; charset=utf-8\r\n">>,
       spellHeaders(NewHeaders), <<"\r\n">>, Body
    ].

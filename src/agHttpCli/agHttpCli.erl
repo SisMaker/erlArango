@@ -25,7 +25,7 @@
    , connectDb/1
    , disConnectDb/1
    , getCurDbInfo/1
-   , setCurDbName/2
+   , useDatabase/2
 
 ]).
 
@@ -264,12 +264,12 @@ setCurDbInfo(Socket, DbName, UserPassword, Host, Protocol) ->
 getCurDbInfo(Socket) ->
    erlang:get({'$agDbInfo', Socket}).
 
--spec setCurDbName(socket(), binary()) -> ok.
-setCurDbName(Socket, NewDbName) ->
+-spec useDatabase(socket(), binary()) -> ok.
+useDatabase(Socket, NewDbName) ->
    case erlang:get({'$agDbInfo', Socket}) of
       undefined ->
          ignore;
       {_DbName, UserPassword, Host, Protocol} ->
-         erlang:put({'$agDbInfo', Socket}, {<<"_db/", NewDbName/binary>>, UserPassword, Host, Protocol})
+         erlang:put({'$agDbInfo', Socket}, {<<"/_db/", NewDbName/binary>>, UserPassword, Host, Protocol})
    end,
    ok.

@@ -59,7 +59,7 @@ dbOpts(DbCfgs) ->
    SocketOpts = ?GET_FROM_LIST(socketOpts, DbCfgs, ?DEFAULT_SOCKET_OPTS),
    DbOpts = agMiscUtils:parseUrl(BaseUrl),
    UserPasswordBase64 = {<<"Authorization">>, <<"Basic ", (base64:encode(<<User/binary, ":", Password/binary>>))/binary>>},
-   DbOpts#dbOpts{dbName = <<"_db/", DbName/binary>>, userPassword = UserPasswordBase64, poolSize = PoolSize, socketOpts = SocketOpts}.
+   DbOpts#dbOpts{dbName = <<"/_db/", DbName/binary>>, userPassword = UserPasswordBase64, poolSize = PoolSize, socketOpts = SocketOpts}.
 
 -spec agencyOpts(list()) -> agencyOpts().
 agencyOpts(AgencyCfgs) ->

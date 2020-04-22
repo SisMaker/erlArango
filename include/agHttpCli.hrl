@@ -7,7 +7,7 @@
 
 %% 默认值定义
 -define(DEFAULT_BASE_URL, <<"http://127.0.0.1:8529">>).
--define(DEFAULT_DBNAME, <<"_system">>).
+-define(DEFAULT_DBNAME, <<"tttt">>).
 -define(DEFAULT_USER, <<"root">>).
 -define(DEFAULT_PASSWORD, <<"156736">>).
 -define(DEFAULT_BACKLOG_SIZE, 1024).
