@@ -106,7 +106,7 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
                      end
                end;
             _ ->
-               {error, dbinfo_not_found}
+               {error, dbinfoNotFound}
          end
    end.
 
@@ -115,7 +115,6 @@ receiveRequestRet(RequestId, MonitorRef) ->
    receive
       #miRequestRet{requestId = RequestId, reply = Reply} ->
          erlang:demonitor(MonitorRef),
-         % io:format("IMY********receiveRequestRet ~p~n", [Reply]),
          case Reply of
             {ok, <<>>, _StatusCode, _Headers} ->
                erlang:setelement(2, Reply, #{});
@@ -145,12 +144,12 @@ receiveTcpData(RecvState, Socket, Rn, RnRn, IsHeadMethod) ->
             {error, Reason} ->
                ?WARN(receiveTcpData, "handle tcp data error: ~p ~n", [Reason]),
                disConnectDb(Socket),
-               {error, {tcp_data_error, Reason}}
+               {error, {tcpDataError, Reason}}
          catch
             E:R:S ->
                ?WARN(receiveTcpData, "handle tcp data crash: ~p:~p~n~p ~n ", [E, R, S]),
                disConnectDb(Socket),
-               {error, handledata_error}
+               {error, handledataError}
          end;
       {tcp_closed, Socket} ->
          disConnectDb(Socket),
@@ -177,12 +176,12 @@ receiveSslData(RecvState, Socket, Rn, RnRn, IsHeadMethod) ->
             {error, Reason} ->
                ?WARN(receiveSslData, "handle tcp data error: ~p ~n", [Reason]),
                disConnectDb(Socket),
-               {error, {ssl_data_error, Reason}}
+               {error, {sslDataError, Reason}}
          catch
             E:R:S ->
                ?WARN(receiveSslData, "handle tcp data crash: ~p:~p~n~p ~n ", [E, R, S]),
                disConnectDb(Socket),
-               {error, handledata_error}
+               {error, handledataError}
          end;
       {ssl_closed, Socket} ->
          disConnectDb(Socket),
@@ -192,15 +191,15 @@ receiveSslData(RecvState, Socket, Rn, RnRn, IsHeadMethod) ->
          {error, {ssl_error, Reason}}
    end.
 
--spec startPool(poolName(), dbCfgs()) -> ok | {error, pool_name_used}.
+-spec startPool(poolName(), dbCfgs()) -> ok | {error, poolNameUsed}.
 startPool(PoolName, DbCfgs) ->
    agAgencyPoolMgrIns:startPool(PoolName, DbCfgs, []).
 
--spec startPool(poolName(), dbCfgs(), agencyCfgs()) -> ok | {error, pool_name_used}.
+-spec startPool(poolName(), dbCfgs(), agencyCfgs()) -> ok | {error, poolNameUsed}.
 startPool(PoolName, DbCfgs, AgencyCfgs) ->
    agAgencyPoolMgrIns:startPool(PoolName, DbCfgs, AgencyCfgs).
 
--spec stopPool(poolName()) -> ok | {error, pool_not_started}.
+-spec stopPool(poolName()) -> ok | {error, poolNotStarted}.
 stopPool(PoolName) ->
    agAgencyPoolMgrIns:stopPool(PoolName).
 

@@ -24,13 +24,13 @@ handleMsg(#miRequest{method = Method, path = Path, headers = Headers, body = Bod
    #cliState{backlogNum = BacklogNum, backlogSize = BacklogSize, requestsIn = RequestsIn, status = Status} = CliState) ->
    case Socket of
       undefined ->
-         agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, no_socket}),
+         agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, noSocket}),
          {ok, SrvState, CliState};
       _ ->
-         case BacklogNum >= BacklogSize of
+         case BacklogNum > BacklogSize of
             true ->
                ?WARN(ServerName, ":backlog full curNum:~p Total: ~p ~n", [BacklogNum, BacklogSize]),
-               agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, backlog_full}),
+               agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, backlogFull}),
                {ok, SrvState, CliState};
             _ ->
                case Status of
@@ -49,8 +49,8 @@ handleMsg(#miRequest{method = Method, path = Path, headers = Headers, body = Bod
                         {error, Reason} ->
                            ?WARN(ServerName, ":send error: ~p ~p ~p ~n", [Reason, FromPid, RequestId]),
                            gen_tcp:close(Socket),
-                           agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, {socket_send_error, Reason}}),
-                           agAgencyUtils:dealClose(SrvState, CliState, {error, {socket_send_error, Reason}})
+                           agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, {socketSendError, Reason}}),
+                           agAgencyUtils:dealClose(SrvState, CliState, {error, {socketSendError, Reason}})
                      end;
                   _ ->
                      agAgencyUtils:addQueue(RequestsIn, MiRequest),
@@ -75,12 +75,12 @@ handleMsg({tcp, Socket, Data},
       {error, Reason} ->
          ?WARN(ServerName, "handle tcp data error: ~p ~p ~n", [Reason, CurInfo]),
          gen_tcp:close(Socket),
-         agAgencyUtils:dealClose(SrvState, CliState, {error, {tcp_data_error, Reason}})
+         agAgencyUtils:dealClose(SrvState, CliState, {error, {tcpDataError, Reason}})
    catch
       E:R:S ->
          ?WARN(ServerName, "handle tcp data crash: ~p:~p~n~p~n ~p ~n ", [E, R, S, CurInfo]),
          gen_tcp:close(Socket),
-         agAgencyUtils:dealClose(SrvState, CliState, {error, agency_handledata_error})
+         agAgencyUtils:dealClose(SrvState, CliState, {error, agencyHandledataError})
    end;
 handleMsg({timeout, TimerRef, waiting_over},
    #srvState{socket = Socket} = SrvState,
@@ -104,7 +104,7 @@ handleMsg({tcp_error, Socket, Reason},
 handleMsg(?miDoNetConnect,
    #srvState{poolName = PoolName, serverName = ServerName, reconnectState = ReconnectState} = SrvState,
    #cliState{requestsOut = RequestsOut} = CliState) ->
-   case ?agBeamPool:get(PoolName) of
+   case ?agBeamPool:getv(PoolName) of
       #dbOpts{host = Host, port = Port, hostname = HostName, dbName = DbName, userPassword = UserPassword, socketOpts = SocketOpts} ->
          case dealConnect(ServerName, HostName, Port, SocketOpts) of
             {ok, Socket} ->
@@ -121,7 +121,7 @@ handleMsg(?miDoNetConnect,
                agAgencyUtils:reconnectTimer(SrvState, CliState)
          end;
       _Ret ->
-         ?WARN(ServerName, "deal connect not found agBeamPool:get(~p) ret ~p is error ~n", [PoolName, _Ret])
+         ?WARN(ServerName, "deal connect not found agBeamPool:getv(~p) ret ~p is error ~n", [PoolName, _Ret])
    end;
 handleMsg(Msg, #srvState{serverName = ServerName} = SrvState, CliState) ->
    ?WARN(ServerName, "unknown msg: ~p~n", [Msg]),
@@ -180,8 +180,8 @@ overDealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers,
             {error, Reason} ->
                ?WARN(ServerName, ":send error: ~p~n", [Reason]),
                gen_tcp:close(Socket),
-               agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socket_send_error}),
-               agAgencyUtils:dealClose(SrvState, CliState, {error, socket_send_error})
+               agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socketSendError}),
+               agAgencyUtils:dealClose(SrvState, CliState, {error, socketSendError})
          end
    end.
 
@@ -204,12 +204,12 @@ overReceiveTcpData(#srvState{poolName = PoolName, serverName = ServerName, rn = 
             {error, Reason} ->
                ?WARN(overReceiveTcpData, "handle tcp data error: ~p ~n", [Reason]),
                gen_tcp:close(Socket),
-               agAgencyUtils:dealClose(SrvState, CliState, {error, {tcp_data_error, Reason}})
+               agAgencyUtils:dealClose(SrvState, CliState, {error, {tcpDataError, Reason}})
          catch
             E:R:S ->
                ?WARN(overReceiveTcpData, "handle tcp data crash: ~p:~p~n~p ~n ", [E, R, S]),
                gen_tcp:close(Socket),
-               agAgencyUtils:dealClose(SrvState, CliState, {error, {tcp_error, handledata_error}})
+               agAgencyUtils:dealClose(SrvState, CliState, {error, {tcp_error, handledataError}})
          end;
       {timeout, TimerRef, waiting_over} ->
          case CurInfo of
@@ -220,7 +220,7 @@ overReceiveTcpData(#srvState{poolName = PoolName, serverName = ServerName, rn = 
                   undefined ->
                      {ok, SrvState, CliState#cliState{backlogNum = BacklogNum - 1, status = leisure, curInfo = undefined, recvState = undefined}};
                   MiRequest ->
-                     case ?agBeamPool:get(PoolName) of
+                     case ?agBeamPool:getv(PoolName) of
                         #dbOpts{port = Port, hostname = HostName, socketOpts = SocketOpts} ->
                            case dealConnect(ServerName, HostName, Port, SocketOpts) of
                               {ok, NewSocket} ->
@@ -228,10 +228,10 @@ overReceiveTcpData(#srvState{poolName = PoolName, serverName = ServerName, rn = 
                                  NewCliState = CliState#cliState{status = leisure, recvState = undefined, curInfo = undefined},
                                  overDealQueueRequest(MiRequest, SrvState#srvState{socket = NewSocket}, NewCliState);
                               {error, _Reason} ->
-                                 agAgencyUtils:dealClose(SrvState, CliState, {error, {new_tcp_connect_error_over, _Reason}})
+                                 agAgencyUtils:dealClose(SrvState, CliState, {error, {newTcpConnectErrorOver, _Reason}})
                            end;
                         _Ret ->
-                           agAgencyUtils:dealClose(SrvState, CliState, {error, {not_found_poolName, PoolName}})
+                           agAgencyUtils:dealClose(SrvState, CliState, {error, {notFoundPoolName, PoolName}})
                      end
                end;
             _ ->
@@ -299,8 +299,8 @@ dealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers, bod
             {error, Reason} ->
                ?WARN(ServerName, ":send error: ~p~n", [Reason]),
                gen_tcp:close(Socket),
-               agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socket_send_error}),
-               agAgencyUtils:dealClose(SrvState, CliState, {error, socket_send_error})
+               agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, socketSendError}),
+               agAgencyUtils:dealClose(SrvState, CliState, {error, socketSendError})
          end
    end.
 

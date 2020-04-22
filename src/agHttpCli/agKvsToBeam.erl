@@ -22,11 +22,11 @@ load(Module, KVs) ->
 forms(Module, KVs) ->
    %% -module(Module).
    Mod = erl_syntax:attribute(erl_syntax:atom(module), [erl_syntax:atom(Module)]),
-   %% -export([get/0]).
-   ExportList = [erl_syntax:arity_qualifier(erl_syntax:atom(get), erl_syntax:integer(1))],
+   %% -export([getv/0]).
+   ExportList = [erl_syntax:arity_qualifier(erl_syntax:atom(getv), erl_syntax:integer(1))],
    Export = erl_syntax:attribute(erl_syntax:atom(export), [erl_syntax:list(ExportList)]),
-   %% get(K) -> V
-   Function = erl_syntax:function(erl_syntax:atom(get), lookup_clauses(KVs, [])),
+   %% getv(K) -> V
+   Function = erl_syntax:function(erl_syntax:atom(getv), lookup_clauses(KVs, [])),
    [erl_syntax:revert(X) || X <- [Mod, Export, Function]].
 
 lookup_clause(Key, Value) ->

@@ -3,9 +3,8 @@
 
 -compile([export_all, nowarn_export_all]).
 
--compile([export_all, nowarn_export_all]).
-
 start() ->
+   erlSync:run(),
    application:ensure_all_started(erlArango),
    agHttpCli:startPool(tt, [{poolSize, 10}], []).
 

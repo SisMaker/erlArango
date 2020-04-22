@@ -266,7 +266,7 @@ parseChunkSize(Bin) ->
          undefined
    end.
 
--spec headers(recvState()) -> {ok, headers()} | {error, invalid_headers}.
+-spec headers(recvState()) -> {ok, headers()} | {error, invalidHeaders}.
 headers(#recvState{headers = Headers}) ->
    parseHeaders(Headers, []).
 
@@ -275,7 +275,7 @@ parseHeaders([], Acc) ->
 parseHeaders([Header | T], Acc) ->
    case binary:split(Header, <<":">>) of
       [Header] ->
-         {error, invalid_headers};
+         {error, invalidHeaders};
       [Key, <<>>] ->
          parseHeaders(T, [{Key, undefined} | Acc]);
       [Key, <<" ", Value/binary>>] ->

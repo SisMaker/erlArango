@@ -20,16 +20,16 @@
 ]).
 
 -spec getQueue(pos_integer()) -> undefined | miRequest().
-getQueue(RequestsIn) ->
-   erlang:get(RequestsIn).
+getQueue(RequestsIndex) ->
+   erlang:get(RequestsIndex).
 
 -spec addQueue(pos_integer(), miRequest()) -> undefined.
-addQueue(RequestsIn, MiRequest) ->
-   erlang:put(RequestsIn, MiRequest).
+addQueue(RequestsIndex, MiRequest) ->
+   erlang:put(RequestsIndex, MiRequest).
 
 -spec delQueue(pos_integer()) -> miRequest().
-delQueue(RequestsIn) ->
-   erlang:erase(RequestsIn).
+delQueue(RequestsIndex) ->
+   erlang:erase(RequestsIndex).
 
 -spec clearQueue() -> term().
 clearQueue() ->

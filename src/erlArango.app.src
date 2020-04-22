@@ -6,6 +6,6 @@
       {applications, [kernel, stdlib, jiffy]},
       {env, []},
       {modules, []},
-      {licenses, ["Apache 2.0"]},
+      {licenses, ["MIT License"]},
       {links, []}
    ]}.

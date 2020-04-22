@@ -17,13 +17,13 @@
    , lookHeader/2
 ]).
 
--spec parseUrl(binary()) -> dbOpts() | {error, invalid_url}.
+-spec parseUrl(binary()) -> dbOpts() | {error, invalidUrl}.
 parseUrl(<<"http://", Rest/binary>>) ->
    parseUrl(tcp, Rest);
 parseUrl(<<"https://", Rest/binary>>) ->
    parseUrl(ssl, Rest);
 parseUrl(_) ->
-   {error, invalid_url}.
+   {error, invalidUrl}.
 
 -spec parseUrl(protocol(), binary()) -> dbOpts().
 parseUrl(Protocol, Rest) ->

@@ -23,7 +23,7 @@ init_it(Name, Parent, Args) ->
          process_flag(trap_exit, true),
          moduleInit(Parent, Args);
       {false, Pid} ->
-         proc_lib:init_ack(Parent, {error, {already_started, Pid}})
+         proc_lib:init_ack(Parent, {error, {alreadyStarted, Pid}})
    end.
 
 -spec system_code_change(term(), module(), undefined | term(), term()) -> {ok, term()}.

@@ -88,7 +88,7 @@
    hostname :: hostName(),
    dbName :: binary(),
    protocol :: protocol(),
-   poolSize :: binary(),
+   poolSize :: poolSize(),
    userPassword :: binary(),
    socketOpts :: socketOpts()
 }).
