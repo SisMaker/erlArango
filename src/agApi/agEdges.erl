@@ -7,16 +7,31 @@
 
 %% doc_address:https://www.arangodb.com/docs/stable/http/edge.html
 
-% 边是具有两个附加属性的文档：_from和_to。这些属性是强制性的，并且必须包含边的from和to顶点的文档句柄。
-% 使用常规文档 REST api 进行创建/读取/更新/删除。
-% 读取入站或出站边缘
-% 获得优势
+% 边的地址和标签
+% ArangoDB中的所有文档都有一个文档句柄。该句柄唯一地标识一个文档。可以使用其唯一的URI检索任何文档：
+%
+% http://server:port/_api/document/<document-handle>
+% 边缘是文档的特殊变体。要访问边缘，请使用与文档相同的URL格式：
+%
+% http://server:port/_api/document/<document-handle>
+% 例如，假定存储在 边缘的_id属性中的文档句柄是demo / 362549736，则该边缘的URL为：
+%
+% http://localhost:8529/_api/document/demo/362549736
+% 上面的URL方案没有明确指定数据库名称，因此将使用默认数据库。要明确指定数据库上下文，请使用以下URL模式：
+%
+% http://server:port/_db/<database-name>/_api/document/<document-handle>
+% 范例：
+%
+% http://localhost:8529/_db/mydb/_api/document/demo/362549736
+% 注意：为了简洁起见，以下示例使用简短的URL格式。
+
+% 获取边
 % GET /_api/edges/{collection-id}
 % 路径参数
-% collection-id（必填）：集合的ID。
+% collection-id（必填）：边集合的ID或者边集合名。
 % 查询参数
-% 顶点（必填）：起始顶点的ID。
-% 方向（可选）：选择在或出为边缘方向。如果未设置，则返回任何边。
+%    vertex（必填）：起始顶点的ID。
+%    direction（可选）：选择 in or out 为边缘方向。如果未设置，则返回任何边。
 % 返回以vertex标识的顶点开始或结束的边数组 。
 % 返回码
 % 200：如果找到边缘集合并检索到边缘，则返回。
