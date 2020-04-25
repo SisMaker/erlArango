@@ -46,7 +46,7 @@ test(N, StartTime) ->
 %%    test(N - 1, Request).
 
 
-tcjf(0, Args1) ->
+tcjf(0, _Args1) ->
    Args = #{name => ffd, tet => "fdsff", <<"dfdf">> => 131245435346},
    jiffy:encode(Args);
 tcjf(N, Args1) ->
@@ -54,7 +54,7 @@ tcjf(N, Args1) ->
    jiffy:encode(Args),
    tcjf(N - 1, Args1).
 
-tcjx(0, Args1) ->
+tcjx(0, _Args1) ->
    Args = {[{name, ffd}, {tet, "fdsff"}, {<<"dfdf">>, 131245435346}]},
    jiffy:encode(Args);
 tcjx(N, Args1) ->
