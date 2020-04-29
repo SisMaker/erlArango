@@ -184,7 +184,7 @@ parseQuery(PoolNameOrSocket, MapData) ->
 % 返回码
 % 200：如果成功检索到属性，则返回。
 % 400：如果请求格式错误，服务器将以HTTP 400进行响应，
-getQueryProperties(PoolNameOrSocket) ->
+getQueryProps(PoolNameOrSocket) ->
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/query/properties">>, [], undefined).
 
 % 更改AQL查询跟踪的配置
@@ -201,7 +201,7 @@ getQueryProperties(PoolNameOrSocket) ->
 % 返回码
 %     200：如果属性更改成功，则返回。
 %     400：如果请求格式错误，服务器将以HTTP 400进行响应，
-changeQueryProperties(PoolNameOrSocket, MapData) ->
+changeQueryProps(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/query/properties">>, [], BodyStr).
 
@@ -306,7 +306,7 @@ clearQueryCaches(PoolNameOrSocket) ->
 % 返回码
 %    200：如果可以成功检索属性，则返回。
 %    400：如果请求格式错误，服务器将以HTTP 400进行响应，
-getQCacheProperties(PoolNameOrSocket) ->
+getQCacheProps(PoolNameOrSocket) ->
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/query-cache/properties">>, [], undefined).
 
 % 全局调整AQL查询结果缓存属性
@@ -322,7 +322,7 @@ getQCacheProperties(PoolNameOrSocket) ->
 % 返回码
 % 200：如果属性更改成功，则返回。
 % 400：如果请求格式错误，服务器将以HTTP 400进行响应，
-changeQCacheProperties(PoolNameOrSocket, MapData) ->
+changeQCacheProps(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/query-cache/properties">>, [], BodyStr).
 

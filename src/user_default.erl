@@ -19,10 +19,10 @@ tt(C, N) ->
 %% /_api/database
 
 test(0, StartTime) ->
-   agMiscFun:getDbTime(tt),
+   agMiscFuns:curDbTime(tt),
    io:format("IMY******test over use time ~p~n", [erlang:system_time(millisecond) - StartTime]);
 test(N, StartTime) ->
-   agMiscFun:getDbTime(tt),
+   agMiscFuns:curDbTime(tt),
    test(N - 1, StartTime).
 
 %% tt(C, N) ->

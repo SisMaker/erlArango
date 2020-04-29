@@ -101,7 +101,7 @@ getViewList(PoolNameOrSocket) ->
 % 返回码
 % 400：如果缺少视图名称，则返回HTTP 400。
 % 404：如果视图名称未知，则返回HTTP 404。
-getViewProperties(PoolNameOrSocket, ViewName) ->
+getViewProps(PoolNameOrSocket, ViewName) ->
    Path = <<"/_api/view/", ViewName/binary, "/properties">>,
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
@@ -138,7 +138,7 @@ getViewProperties(PoolNameOrSocket, ViewName) ->
 % 返回码
 %    400：如果缺少视图名称，则返回HTTP 400。
 %    404：如果视图名称未知，则返回HTTP 404。
-changeViewAllProperties(PoolNameOrSocket, ViewName, MapData) ->
+changeViewAllProps(PoolNameOrSocket, ViewName, MapData) ->
    Path = <<"/_api/view/", ViewName/binary, "/properties">>,
    BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
@@ -176,7 +176,7 @@ changeViewAllProperties(PoolNameOrSocket, ViewName, MapData) ->
 % 返回码
 %    400：如果缺少视图名称，则返回HTTP 400。
 %    404：如果视图名称未知，则返回HTTP 404。
-changeViewPartProperties(PoolNameOrSocket, ViewName, MapData) ->
+changeViewPartProps(PoolNameOrSocket, ViewName, MapData) ->
    Path = <<"/_api/view/", ViewName/binary, "/properties">>,
    BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPatch, Path, [], BodyStr).

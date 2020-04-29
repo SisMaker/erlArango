@@ -177,7 +177,7 @@ collInfo(PoolNameOrSocket, CollName) ->
 % 400：如果缺少集合名称，则返回HTTP 400。
 % 404：如果集合名称未知，则 返回HTTP 404。
 % HTTP 200
-collProperties(PoolNameOrSocket, CollName) ->
+collProps(PoolNameOrSocket, CollName) ->
    Path = <<"/_api/collection/", (CollName)/binary, "/properties">>,
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
@@ -419,7 +419,7 @@ collLoadIndexesIntoMemory(PoolNameOrSocket, CollName) ->
 % 返回码
 % 400：如果缺少集合名称，则返回HTTP 400。
 % 404：如果集合名称未知，则 返回HTTP 404。
-collChangeProperties(PoolNameOrSocket, CollName, MapData) ->
+collChangeProps(PoolNameOrSocket, CollName, MapData) ->
    Path = <<"/_api/collection/", CollName/binary, "/properties">>,
    BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
