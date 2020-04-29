@@ -178,7 +178,7 @@ modifyAdminLogLevel(PoolNameOrSocket, MapData) ->
 % scheduler-threads：产生的工作线程数
 % 进行中：当前繁忙的工作线程数
 % 排队：排队等待工作线程可用的作业数
-getAdminStatistics(PoolNameOrSocket) ->
+getAdminProps(PoolNameOrSocket) ->
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/statistics">>, [], undefined).
 
 % 统计数据说明
@@ -285,7 +285,7 @@ getAdminServerAvailability(PoolNameOrSocket) ->
 % 200：
 % 400：数据库服务器的ID
 % 403：
-getAdminClusterStatistics(PoolNameOrSocket, DBserver) ->
+getAdminClusterProps(PoolNameOrSocket, DBserver) ->
    Path = <<"/_admin/clusterStatistics?DBserver=", (agMiscUtils:toBinary(DBserver))/binary>>,
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
