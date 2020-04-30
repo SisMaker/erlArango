@@ -7,94 +7,105 @@
 
 % doc_address:https://www.arangodb.com/docs/3.6/http/replications.html
 
+% 用于复制的HTTP接口
+% 复制
+% 这是对ArangoDB的HTTP复制接口的介绍。复制架构和组件中更详细地描述了 复制。
+%
+% HTTP复制接口有四个主要用途：
+%    从服务器获取初始数据（例如用于备份，或用于在启动连续复制应用程序之前进行数据的初始同步）
+%    查询主机状态
+%    从主服务器获取连续更改（用于更改的增量同步）
+%    在从属服务器上管理复制应用程序（启动，停止，配置，查询状态）
+% 请注意，如果使用每个数据库的设置（与服务器级复制相反，从v3.3.0开始可用），则必须为每个数据库分别配置复制系统，并且复制多个数据库的数据将需要进行多个操作。
+
 % 复制转储命令
-% 该库存方法可用于查询ArangoDB数据库的当前设置的集合加上他们的指标。客户可以使用此方法来概述数据库中存在哪些集合。他们可以使用此信息来启动数据的全部或部分同步，例如启动备份或增量数据同步。
+% 该库存方法可用于查询ArangoDB数据库的当前设置的集合加上他们的指标。客户可以使用此方法来概述数据库中存在哪些集合。他们可以使用此信息来启动数据的全部或部分同步，例如启动备份或增量数据同步
 
 % 返回集合及其索引的概述
 % GET /_api/replication/inventory
 % 查询参数
-% includeSystem（可选）：在结果中包括系统集合。默认值为true。
-% 全局（可选）：在响应中包括所有数据库。仅适用于_system默认值为false。
-% batchId（必填）：此API调用的RocksDB引擎需要有效的batchId
+%     includeSystem（可选）：在结果中包括系统集合。默认值为true。
+%     global （可选）：在响应中包括所有数据库。仅适用于_system默认值为false。
+%     batchId（必填）：此API调用的RocksDB引擎需要有效的batchId
 % 返回服务器上可用的集合和索引的数组。复制客户端可以使用此阵列来启动与服务器的初始同步。
 % 响应将包含具有collection和state和 tick属性的JSON对象。
 % 集合是具有以下子属性的集合数组：
-% 参数：集合属性
-% 索引：集合索引的数组。主索引和边缘索引不包含在此数组中。
+%     parameters：集合属性
+%     indexes：集合索引的数组。主索引和边缘索引不包含在此数组中。
 % 该状态属性包含复制记录器的当前状态。它包含以下子属性：
-% running：复制记录器当前是否处于活动状态。注意：从ArangoDB 2.2开始，该值将始终为true
-% lastLogTick：复制记录器已写入的最后一个滴答的值
-% time：服务器上的当前时间
+%     running：复制记录器当前是否处于活动状态。注意：从ArangoDB 2.2开始，该值将始终为true
+%     lastLogTick：复制记录器已写入的最后一个滴答的值
+%     time：服务器上的当前时间
 % 复制客户端应注意返回的lastLogTick值。然后，他们可以使用转储方法获取集合的数据直到lastLogTick的值，并在此滴答值之后查询连续复制日志中的日志事件。
 % 要在服务器上创建集合的完整副本，复制客户端可以执行以下步骤：
-% 调用/ inventory API方法。这将从服务器返回lastLogTick值以及集合和索引的数组。
-% 对于/ inventory返回的每个集合，请在本地创建集合，然后调用/ dump将集合数据流式传输到客户端，直到lastLogTick的值 为止。之后，客户端可以在/ inventory报告的集合上创建索引。
+%     调用/ inventory API方法。这将从服务器返回lastLogTick值以及集合和索引的数组。
+%     对于/ inventory返回的每个集合，请在本地创建集合，然后调用/ dump将集合数据流式传输到客户端，直到lastLogTick的值 为止。之后，客户端可以在/ inventory报告的集合上创建索引。
 % 如果客户端要从记录器服务器连续流式传输复制日志事件，则需要执行以下附加步骤：
-% 客户端应首先调用/ logger-follow来获取在客户端调用/ inventory之后记录的第一批复制事件。
-% 对/ logger-follow的调用应使用from参数，其值应为/ inventory报告的lastLogTick的值 。调用/ logger-follow将返回 x-arango-replication-lastincluded，其中将包含响应中包含的最后一个滴答值。
-% 然后，客户端可以连续调用/ logger-follow以递增地获取上次传输后发生的新复制事件。
-% 调用应使用from参数，并带有 上一个响应的x-arango-replication-lastincluded头的值。如果没有更多的复制事件，则响应将为空，客户端可以休眠一会儿，然后再试一次。
+%     客户端应首先调用/ logger-follow来获取在客户端调用/ inventory之后记录的第一批复制事件。
+%     对/ logger-follow的调用应使用from参数，其值应为/ inventory报告的lastLogTick的值 。调用/ logger-follow将返回 x-arango-replication-lastincluded，其中将包含响应中包含的最后一个滴答值。
+%     然后，客户端可以连续调用/ logger-follow以递增地获取上次传输后发生的新复制事件。
+%     调用应使用from参数，并带有 上一个响应的x-arango-replication-lastincluded头的值。如果没有更多的复制事件，则响应将为空，客户端可以休眠一会儿，然后再试一次。
 % 注意：在协调器上，此请求必须具有查询参数DBserver，该参数 必须是DBserver的ID。相同的请求被同步转发到该DBserver。如果此属性未在协调程序情况下绑定，则是错误的。
 % 注意：：global顶层对象使用参数包含一个键databases ，每个键下的一个键代表一个datbase名称，并且值符合上述说明。
 % 返回码
-% 200：如果请求成功执行，则返回。
-% 405：使用无效的HTTP方法时返回。
-% 500：如果组装响应时发生错误，则返回500。
+%     200：如果请求成功执行，则返回。
+%     405：使用无效的HTTP方法时返回。
+%     500：如果组装响应时发生错误，则返回500。
 getRepInventory(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/replication/inventory", QueryBinary/binary>>,
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
+% 创建新的转储批次
 % 处理转储批处理命令
 % POST /_api/replication/batch
 % 注意：这些调用对用户而言并不有趣。
 % 具有以下属性的JSON对象是必需的：
-% ttl：新批处理的生存时间（以秒为单位）
+%    ttl：新批处理的生存时间（以秒为单位）
 % 具有批处理配置的JSON对象。
 % 创建一个新的转储批次并返回批次的ID。
 % 响应是具有以下属性的JSON对象：
-% id：批次的ID
-% 注意：在协调器上，此请求必须具有查询参数DBserver，该参数 必须是DBserver的ID。相同的请求被同步转发到该DBserver。如果此属性未在协调程序情况下绑定，则是错误的。
+%    id：批次的ID
+% 注意：在协调器上，此请求必须具有查询参数DBserver，该参数 必须是DB-Server的ID。相同的请求被同步转发到该DB服务器。如果在Coordinator情况下未绑定此属性，则会出错。
 % 返回码
-% 200：批量创建成功，返回
-% 400：如果ttl值无效，或者在协调器上未指定DBserver属性或该属性非法，则返回。
-% 405：使用无效的HTTP方法时返回。
+%    200：批量创建成功，返回
+%    400：如果ttl值无效，或者在Coordinator上未指定DBserver属性或该属性非法，则返回400 。
+%    405：使用无效的HTTP方法时返回。
 newRepBatch(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_api/replication/batch">>, [], BodyStr).
 
-
-% 删除现有的转储批次
+% 删除现有的转储批次固定链接
 % 处理转储批处理命令
 % DELETE /_api/replication/batch/{id}
 % 注意：这些调用对用户而言并不有趣。
 % 路径参数
-% id（必填）：批次的ID。
+%    id（必填）：批次的ID。
 % 删除现有的转储批处理，从而允许恢复压缩和清理。
-% 注意：在协调器上，此请求必须具有查询参数DBserver，该参数 必须是DBserver的ID。相同的请求被同步转发到该DBserver。如果此属性未在协调程序情况下绑定，则是错误的。
+% 注意：在协调器上，此请求必须具有查询参数DBserver，该参数 必须是DB-Server的ID。相同的请求被同步转发到该DB服务器。如果在Coordinator情况下未绑定此属性，则会出错。
 % 返回码
-% 204：批量删除成功，返回。
-% 400：如果找不到批次，则返回。
-% 405：使用无效的HTTP方法时返回。
+%    204：批量删除成功，返回。
+%    400：如果找不到批次，则返回。
+%    405：使用无效的HTTP方法时返回。
 delRepBatch(PoolNameOrSocket, BatchId) ->
    Path = <<"/_api/replication/batch/", (agMiscUtils:toBinary(BatchId))/binary>>,
-   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], undefined).
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgDelete, Path, [], undefined).
 
-
+% 延长现有的转储批次固定链接
 % 处理转储批处理命令
 % PUT /_api/replication/batch/{id}
 % 注意：这些调用对用户而言并不有趣。
 % 路径参数
-% id（必填）：批次的ID。
+%    id（必填）：批次的ID。
 % 具有以下属性的JSON对象是必需的：
-% ttl：新批次的生存时间（以秒为单位）
+%    ttl：新批次的生存时间（以秒为单位）
 % 使用批次的ID和提供的ttl值来扩展现有转储批次的ttl。
 % 如果可以成功扩展批次的ttl，则响应为空。
-% 注意：在协调器上，此请求必须具有查询参数DBserver，该参数 必须是DBserver的ID。相同的请求被同步转发到该DBserver。如果此属性未在协调程序情况下绑定，则是错误的。
+% 注意：在协调器上，此请求必须具有查询参数DBserver，该参数 必须是DB-Server的ID。相同的请求被同步转发到该DB服务器。如果在Coordinator情况下未绑定此属性，则会出错。
 % 返回码
-% 204：如果成功扩展了批次的ttl，则返回。
-% 400：如果ttl值无效或未找到批次，则返回。
-% 405：使用无效的HTTP方法时返回。
+%    204：如果成功扩展了批次的ttl，则返回。
+%    400：如果ttl值无效或未找到批次，则返回。
+%    405：使用无效的HTTP方法时返回。
 % 该转储方法可用于从特定集合中获取数据。由于dump命令的结果可能非常庞大，所以dump可能不会一次返回集合中的所有数据。而是，复制客户端可能会重复调用dump命令，直到没有更多数据要提取为止。dump命令不仅会返回集合中的当前文档，还会返回文档的更新和删除。
 % 请注意，dump方法将仅返回文档，日记帐和数据文件中的更新，删除。仅存储在预写日志中的操作将不会返回。为了确保这些操作包含在转储中，必须先清除预写日志。
 % 为了获得相同的数据状态，复制客户端应按照提供的顺序使用转储结果的各个部分。
@@ -103,58 +114,153 @@ prolongRepBatch(PoolNameOrSocket, BatchId, MapData) ->
    BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], BodyStr).
 
+% 返回集合的数据
 % 返回一个集合的全部内容
 % GET /_api/replication/dump
 % 查询参数
-% 集合（必填）：要转储的集合的名称或ID。
-% chunkSize（可选）：
-% batchId（必填）：仅rocksdb-要使用的快照的ID
-% from（可选）：仅mmfiles-结果的下界刻度值。
-% 到（可选）：仅mmfiles-结果的上限刻度值。
-% includeSystem（可选）：仅mmfiles-在结果中包括系统集合。默认值为true。
-% ticks（可选）：仅mmfiles-是否在转储中包括tick值。默认值为true。
-% 刷新（可选）：仅mmfiles-是否在转储前刷新WAL。默认值为true。
+%    collection （必填）：要转储的集合的名称或ID。
+%    chunkSize（可选）：返回结果的大约最大大小。
+%    batchId（必填）：要使用的快照的ID
 % 从集合中返回请求范围内的数据。
-% 如果不使用from查询参数，则从头开始返回收集事件。使用from参数时，结果将仅包含滴答值高于指定的from值的集合条目（注意：滴答值等于from的日志条目将被排除）。
-% 的到查询参数可被用于任选地限制上部结合的结果到一定刻度值。如果使用，结果将仅包含滴答值最大为（包括）到的集合条目。
 % 所述CHUNKSIZE查询参数可用于控制结果的大小。必须以字节为单位指定。该CHUNKSIZE值也仅是被兑现。否则，chunkSize值太低可能导致服务器无法仅将一个条目放入结果中并返回它。因此，只有在将条目写入结果后才能查询chunkSize值。如果结果大小大于 chunkSize，则服务器将以与响应中已经存在的条目一样多的条目进行响应。如果结果大小仍小于chunkSize，则如果还有更多数据要返回，则服务器将尝试返回更多数据。
 % 如果未指定chunkSize，则将使用某些服务器端默认值。
 % 结果的Content-Type是application / x-arango-dump。这是一种易于处理的格式，所有条目都放入响应正文中的单独行中。
 % 每行本身是一个JSON对象，至少具有以下属性：
-% tick：操作的tick属性
-% key：文档/边缘的密钥或删除操作中使用的密钥
-% rev：文档/边缘或删除操作的修订版ID
-% data：类型2300和2301的实际文档/边缘数据。完整的文档/边缘数据将被返回，甚至进行更新。
-% type：条目的类型。类型的可能值为：
-% 2300：文档插入/更新
-% 2301：边缘插入/更新
-% 2302：删除文档/边缘
+%    tick：操作的tick属性
+%    key：文档/边缘的密钥或删除操作中使用的密钥
+%    rev：文档/边缘或删除操作的修订版ID
+%    data：类型2300和2301的实际文档/边缘数据。完整的文档/边缘数据将被返回，甚至进行更新。
+%    type：条目的类型。类型的可能值为：
+%       2300：文档插入/更新
+%       2301：边缘插入/更新
+%       2302：删除文档/边缘
 % 注意：调用此方法时，插入和更新之间没有区别。
 % 返回码
-% 200：如果成功执行了请求并返回了数据，则返回。标头 x-arango-replication-lastincluded设置为最后返回的文档的刻度。
-% 204：如果请求已成功执行，但没有可用内容，则返回。在这种情况下，标题x-arango-replication-lastincluded是0。
-% 400：如果from或to值无效，则返回。
-% 404：找不到集合时返回。
-% 405：使用无效的HTTP方法时返回。
-% 500：如果组装响应时发生错误，则返回500。
+%    200：如果成功执行了请求并返回了数据，则返回。标头 x-arango-replication-lastincluded设置为最后返回的文档的刻度。
+%    204：如果请求已成功执行，但没有可用内容，则返回。在这种情况下，标题x-arango-replication-lastincluded是0。
+%    404：找不到集合时返回。
+%    405：使用无效的HTTP方法时返回。
+%    500：如果组装响应时发生错误，则返回500。
 getRepDump(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/replication/dump", QueryBinary/binary>>,
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
 
-% 从远程端点同步数据
+% 返回Merkle树以进行收集
+% 检索与集合关联的Merkle树
+% GET /_api/replication/revisions/tree
+% 此基于修订的复制终结点仅适用于RocksDB引擎以及ArangoDB v3.7.0或更高版本中创建的集合。
+% 查询参数
+%    collection（必填）：要查询的集合的名称或ID。
+%    batchId（必填）：要使用的快照的ID
+% 返回集合中的Merkle树。
+% 结果将是以下格式的JSON / VelocyPack：
+%
+% {
+% version: <Number>,
+% branchingFactor: <Number>
+% maxDepth: <Number>,
+% rangeMin: <String, revision>,
+% rangeMax: <String, revision>,
+% nodes: [
+% { count: <Number>, hash: <String, revision> },
+% { count: <Number>, hash: <String, revision> },
+% ...
+% { count: <Number>, hash: <String, revision> }
+% ]
+% }
+% 目前，只有一个版本1，因此暂时可以忽略此版本。
+% 每个<String, revision>值类型都是一个64位值，编码为11个字符的字符串，使用与我们的文档_rev值相同的编码。原因是64位值不一定必须用JavaScript完整表示，因为它会将所有数字作为浮点进行处理，并且只能2^53-1忠实地表示。
+% 节点数应对应于具有给定maxDepth和 的完整树branchingFactor。节点按级别顺序树遍历进行布局，因此根节点位于index 0，其子节点位于index ，[1, branchingFactor]依此类推。
+% 返回码
+% 200：如果成功执行了请求并返回了数据，则返回。
+% 401：如果缺少必要的参数，则返回
+% 404：找不到集合或快照时返回。
+% 405：使用无效的HTTP方法时返回。
+% 500：如果组装响应时发生错误，则返回500。
+% 501：如果使用mmfiles调用或在不支持按版本同步的集合上返回，则返回
+getRepTree(PoolNameOrSocket, QueryPars) ->
+   QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
+   Path = <<"/_api/replication/revisions/tree", QueryBinary/binary>>,
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
+
+% 为集合永久链接重建Merkle树
+% 重建与集合关联的Merkle树
+% POST /_api/replication/revisions/tree
+% 此基于修订的复制终结点仅适用于RocksDB引擎以及ArangoDB v3.7.0或更高版本中创建的集合。
+% 查询参数
+%    collection（必填）：要查询的集合的名称或ID。
+% 重建集合的Merkle树。
+% 如果成功，将不会有返回机构。
+% 返回码
+%    204：如果请求成功执行，则返回。
+%    401：如果缺少必要的参数，则返回
+%    404：集合或找不到时返回。
+%    405：使用无效的HTTP方法时返回。
+%    500：如果组装响应时发生错误，则返回500。
+%    501：如果使用mmfiles调用或在不支持按版本同步的集合上返回，则返回
+resetRepTree(PoolNameOrSocket, QueryPars) ->
+   QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
+   Path = <<"/_api/replication/revisions/tree", QueryBinary/binary>>,
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, Path, [], undefined).
+
+% 返回要求范围内的修订版ID 永久链接
+% 检索请求范围内的文档的修订ID
+% PUT /_api/replication/revisions/ranges
+% 此基于修订的复制终结点仅适用于RocksDB引擎以及ArangoDB v3.7.0或更高版本中创建的集合。
+% 查询参数
+%    collection（必填）：要查询的集合的名称或ID。
+%    batchId（必填）：要使用的快照的ID
+%    resume（可选）：如果先前的请求被截断，则恢复的修订版本
+getRepRanges(PoolNameOrSocket, QueryPars) ->
+   QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
+   Path = <<"/_api/replication/revisions/ranges", QueryBinary/binary>>,
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
+
+% 通过修订返回文档
+% 通过修订检索文档
+% PUT /_api/replication/revisions/documents
+% 此基于修订的复制终结点仅适用于RocksDB引擎以及ArangoDB v3.7.0或更高版本中创建的集合。
+% 查询参数
+%    collection（必填）：要查询的集合的名称或ID。
+%    batchId（必填）：要使用的快照的ID
+% 通过修订返回文档
+% 请求的主体应为JSON / VelocyPack，并应包含一个字符串编码的修订ID数组：
+% [
+% <String, revision>,
+% <String, revision>,
+% ...
+% <String, revision>
+% ]
+% 特别是，修订版本应按其解码值的升序排序。
+% 结果将是文档对象的JSON / VelocyPack数组。如果没有对应于特定请求版本的文档，则将在其位置返回一个空对象。
+% 如果响应很长，则响应可能会被截断。在这种情况下，响应数组的长度将小于请求数组的长度，并且可以对省略的文档进行后续请求。
+% 每个<String, revision>值类型都是一个64位值，编码为11个字符的字符串，使用与我们的文档_rev值相同的编码。原因是64位值不一定必须用JavaScript完整表示，因为它会将所有数字作为浮点进行处理，并且只能2^53-1忠实地表示。
+% 返回码
+%    200：如果成功执行了请求并返回了数据，则返回。
+%    401：如果必要的参数丢失或不正确，则返回
+%    404：找不到集合或快照时返回。
+%    405：使用无效的HTTP方法时返回。
+%    500：如果组装响应时发生错误，则返回500。
+%    501：如果使用mmfiles调用或在不支持按版本同步的集合上返回，则返回
+getRepDoc(PoolNameOrSocket, QueryPars) ->
+   QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
+   Path = <<"/_api/replication/revisions/documents", QueryBinary/binary>>,
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, Path, [], undefined).
+
+% 从远程端点同步数据永久
 % 开始复制
 % PUT /_api/replication/sync
 % 具有以下属性的JSON对象是必需的：
-% 端点：要连接的主端点（例如“ tcp：//192.168.173.13：8529”）。
-% database：主数据库上的数据库名称（如果未指定，则默认为本地当前数据库的名称）。
-% username：连接到端点时要使用的可选ArangoDB用户名。
-% password：连接到端点时使用的密码。
-% includeSystem：是否将应用系统收集操作
-% 增量：如果设置为true，则将使用增量同步方法来同步集合中的数据。当集合已经在本地存在并且仅需要从远程端点转移剩余的差异时，此方法很有用。在这种情况下，增量同步可以比完全同步更快。默认值为false，这意味着将传输来自远程集合的完整数据。
-% strictType：用于集合过滤的可选字符串值。指定时，允许的值包括include或exclude。
-% restrictCollections：集合用于在使用的可选阵列 restrictType。如果limitType为include，则仅指定的集合将被同步。如果limitType为exclude，则将同步除指定集合以外的所有集合。
-% initialSyncMaxWaitTime：在获取初始收集数据时，初始同步将等待主服务器响应的最长时间（以秒为单位）。此等待时间可用于控制初始同步将在多长时间后放弃等待响应并失败。如果设置为0，则将忽略此值。
+%    endpoint：要连接的主端点（例如“ tcp：//192.168.173.13：8529”）。
+%    database：主数据库上的数据库名称（如果未指定，则默认为本地当前数据库的名称）。
+%    username：连接到端点时要使用的可选ArangoDB用户名。
+%    password：连接到端点时使用的密码。
+%    includeSystem：是否将应用系统收集操作
+%    incremental：如果设置为true，则将使用增量同步方法来同步集合中的数据。当集合已经在本地存在并且仅需要从远程端点转移剩余的差异时，此方法很有用。在这种情况下，增量同步可以比完全同步更快。默认值为false，这意味着将传输来自远程集合的完整数据。
+%    strictType：用于集合过滤的可选字符串值。指定时，允许的值包括include或exclude。
+%    restrictCollections：集合用于在使用的可选阵列 restrictType。如果limitType为include，则仅指定的集合将被同步。如果limitType为exclude，则将同步除指定集合以外的所有集合。
+%    initialSyncMaxWaitTime：在获取初始收集数据时，初始同步将等待主服务器响应的最长时间（以秒为单位）。此等待时间可用于控制初始同步将在多长时间后放弃等待响应并失败。如果设置为0，则将忽略此值。
 % 启动从远程端点到本地ArangoDB数据库的完整数据同步。
 % 该同步方法可以通过复制客户端使用一个ArangoDB数据库连接到远程端点，取收集和索引，以及收集数据的远程列表。因此，它将在远程ArangoDB数据库上创建数据状态的本地备份。同步在每个数据库级别进行。
 % sync首先会从远程端点获取集合和索引的列表。通过调用远程数据库的清单 API来实现。然后它将清除本地ArangoDB数据库中的数据，并且在启动后会将收集数据从远程数据库传输到本地ArangoDB数据库。它将通过调用远程数据库的转储 API 从远程数据库中提取数据，直到获取所有数据为止。
@@ -165,55 +271,60 @@ getRepDump(PoolNameOrSocket, QueryPars) ->
 % 请谨慎使用！
 % 注意：集群中的协调器不支持此方法。
 % 返回码
-% 200：如果请求成功执行，则返回。
-% 400：配置不完整或格式错误，返回。
-% 405：使用无效的HTTP方法时返回。
-% 500：如果同步期间发生错误，则返回。
-% 501：在集群中的协调器上调用此操作时返回。
+%    200：如果请求成功执行，则返回。
+%    400：配置不完整或格式错误，返回。
+%    405：使用无效的HTTP方法时返回。
+%    500：如果同步期间发生错误，则返回。
+%    501：在集群中的协调器上调用此操作时返回。
 startRepSync(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/sync">>, [], BodyStr).
 
 % 返回集合和索引的集群清单
 % 重建集群中的集合和索引的概述
-% GET /_api/replication/clusterInventory
+%  GET /_api/replication/clusterInventory
 % 查询参数
-% includeSystem（可选）：在结果中包括系统集合。默认值为true。
+%     includeSystem（可选）：在结果中包括系统集合。默认值为true。
 % 返回群集上可用的集合和索引的数组。
 % 响应将是一个JSON对象数组，每个集合一个。每个集合精确地包含两个关键的“参数”和“索引”。此信息来自计划/收藏/ {DB-名称} / * 的机构，只是对指标属性有搬迁到其调整到arangodump的数据格式。
 % 返回码
-% 200：如果请求成功执行，则返回。
-% 405：使用无效的HTTP方法时返回。
-% 500：如果组装响应时发生错误，则返回500。
-getRepClusterInventory(PoolNameOrSocket, QueryPars) ->
+%     200：如果请求成功执行，则返回。
+%     405：使用无效的HTTP方法时返回。
+%     500：如果组装响应时发生错误，则返回500。
+getRepClusterInv(PoolNameOrSocket, QueryPars) ->
    QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    Path = <<"/_api/replication/clusterInventory", QueryBinary/binary>>,
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, Path, [], undefined).
+
+% 复制记录器命令
+% 早期版本的ArangoDB允许启动，停止和配置复制记录器。这些命令在ArangoDB 2.2中是多余的，因为所有数据修改操作均写入服务器的预写日志，并且不再由单独的记录器处理。
+% 自ArangoDB 2.2以来，剩下的唯一有用的操作是查询记录器的当前状态并获取记录器写入的最新更改。这些操作将从预写日志中返回状态和数据。
 
 % 复制记录器命令
 % 返回复制记录器的状态
 % GET /_api/replication/logger-state
 % 返回服务器复制记录器的当前状态。该状态将包括有关记录器是否正在运行以及有关最后记录的滴答值的信息。此刻度值对于增量获取数据很重要。
 % 响应的主体包含具有以下属性的JSON对象：
-% state：当前记录器状态，是带有以下子属性的JSON对象：
-% running：记录仪是否正在运行
-% lastLogTick：记录器记录的最新滴答的滴答值。此值可用于增量获取日志数据。
-% totalEvents：自服务器启动以来记录的事件总数。在记录仪的多次停止和重新启动之间不会重置该值。
-% time：记录器服务器上的当前日期和时间
-% server：具有以下子属性的JSON对象：
-% version：记录器服务器的版本
-% serverId：记录器服务器的ID
-% client：通过连接到记录器的复制客户端返回上一次获取状态。每个客户端均作为具有以下属性的JSON对象返回：
-% syncerId：客户端同步器的ID
-% serverId：客户端的服务器ID
-% lastServedTick：通过logger-follow API 向此客户端提供的最后一个滴答值
-% time：此客户端最后一次调用logger-follow API的日期和时间
+%     state：当前记录器状态，是带有以下子属性的JSON对象：
+%        running：记录仪是否正在运行
+%        lastLogTick：记录器记录的最新滴答的滴答值。此值可用于增量获取日志数据。
+%        totalEvents：自服务器启动以来记录的事件总数。在记录仪的多次停止和重新启动之间不会重置该值。
+%        time：记录器服务器上的当前日期和时间
+%     server：具有以下子属性的JSON对象：
+%        version：记录器服务器的版本
+%        serverId：记录器服务器的ID
+%     client：通过连接到记录器的复制客户端返回上一次获取状态。每个客户端均作为具有以下属性的JSON对象返回：
+%        syncerId：客户端同步器的ID
+%        serverId：客户端的服务器ID
+%        lastServedTick：通过logger-follow API 向此客户端提供的最后一个滴答值
+%        time：此客户端最后一次调用logger-follow API的日期和时间
 % 返回码
-% 200：如果可以成功确定记录器状态，则返回。
-% 405：使用无效的HTTP方法时返回。
-% 500：如果无法确定记录器状态，则返回。
+%     200：如果可以成功确定记录器状态，则返回。
+%     405：使用无效的HTTP方法时返回。
+%     500：如果无法确定记录器状态，则返回。
 getRepLoggerState(PoolNameOrSocket) ->
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/logger-state">>, [], undefined).
+
 
 % 返回日志条目永久链接固定链接
 % 从服务器获取日志行
@@ -262,10 +373,10 @@ getRepLoggerState(PoolNameOrSocket) ->
 % 结果是一个包含属性firstTick的JSON对象。此属性包含服务器的复制日志中可用的最小刻度值。
 % 注意：集群中的协调器不支持此方法。
 % 返回码
-% 200：如果请求成功执行，则返回。
-% 405：使用无效的HTTP方法时返回。
-% 500：如果组装响应时发生错误，则返回500。
-% 501：在集群中的协调器上调用此操作时返回。
+%     200：如果请求成功执行，则返回。
+%     405：使用无效的HTTP方法时返回。
+%     500：如果组装响应时发生错误，则返回500。
+%     501：在集群中的协调器上调用此操作时返回。
 getRepLoggerFirstTick(PoolNameOrSocket) ->
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/logger-first-tick">>, [], undefined).
 
@@ -273,24 +384,27 @@ getRepLoggerFirstTick(PoolNameOrSocket) ->
 % GET /_api/replication/logger-tick-ranges
 % 返回所有当前可用的WAL日志文件的刻度值的当前可用范围。刻度值可用于确定某些数据（由刻度值标识）是否仍可用于复制。
 % 响应的主体包含一个JSON数组。每个数组成员都是一个描述单个日志文件的对象。每个对象都具有以下属性：
-% datafile：日志文件的名称
-% status：数据文件的状态，以文本形式显示（例如，“密封”，“打开”）
-% tickMin：日志文件中包含的最小刻度值
-% tickMax：日志文件中包含的最大刻度值
+%     datafile：日志文件的名称
+%     status：数据文件的状态，以文本形式显示（例如，“密封”，“打开”）
+%     tickMin：日志文件中包含的最小刻度值
+%     tickMax：日志文件中包含的最大刻度值
 % 返回码
-% 200：如果刻度范围可以成功确定，则返回。
-% 405：使用无效的HTTP方法时返回。
-% 500：如果无法确定记录器状态，则返回。
-% 501：在集群中的协调器上调用此操作时返回。
+%     200：如果刻度范围可以成功确定，则返回。
+%     405：使用无效的HTTP方法时返回。
+%     500：如果无法确定记录器状态，则返回。
+%     501：在集群中的协调器上调用此操作时返回。
 getRepLoggerTickRanges(PoolNameOrSocket) ->
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/logger-tick-ranges">>, [], undefined).
+
+% 复制应用程序命令
+% applier命令允许远程启动，停止和查询ArangoDB数据库复制应用程序的状态和配置。
 
 % 复制应用程序命令
 % applier命令允许远程启动，停止和查询ArangoDB数据库复制应用程序的状态和配置。
 % 获取当前的复制配置
 % GET /_api/replication/applier-config
 % 查询参数
-% 全局（可选）：如果设置为true，则返回所有数据库的全局复制应用程序的配置。如果设置为false，则返回所选数据库中复制应用程序的配置（默认）。
+%    global （可选）：如果设置为true，则返回所有数据库的全局复制应用程序的配置。如果设置为false，则返回所选数据库中复制应用程序的配置（默认）。
 % 返回复制应用程序的配置。
 % 响应的主体是带有配置的JSON对象。配置中可能存在以下属性：
 % 端点：要连接的记录器服务器（例如“ tcp：//192.168.173.13：8529”）。
@@ -321,13 +435,9 @@ getRepLoggerTickRanges(PoolNameOrSocket) ->
 getRepApplierConfig(PoolNameOrSocket) ->
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-config">>, [], undefined).
 
-getRepApplierConfig(PoolNameOrSocket, IsGlobal) ->
-   case IsGlobal of
-      true ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-config?global=true">>, [], undefined);
-      _ ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-config">>, [], undefined)
-   end.
+getRepApplierConfig(PoolNameOrSocket, QueryPars) ->
+   QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-config", QueryBinary/binary>>, [], undefined).
 
 % 设置申请者的配置值
 % PUT /_api/replication/applier-config
@@ -367,14 +477,10 @@ setRepApplierConfig(PoolNameOrSocket, MapData) ->
    BodyStr = jiffy:encode(MapData),
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-config">>, [], BodyStr).
 
-setRepApplierConfig(PoolNameOrSocket, MapData, IsGlobal) ->
+setRepApplierConfig(PoolNameOrSocket, MapData, QueryPars) ->
+   QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
    BodyStr = jiffy:encode(MapData),
-   case IsGlobal of
-      true ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-config?global=true">>, [], BodyStr);
-      _ ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-config">>, [], BodyStr)
-   end.
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-config", QueryBinary/binary>>, [], BodyStr).
 
 % 启动复制应用程序
 % PUT /_api/replication/applier-start
@@ -409,13 +515,9 @@ startRepApplier(PoolNameOrSocket, QueryPars) ->
 stopRepApplier(PoolNameOrSocket) ->
    agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-stop">>, [], undefined).
 
-stopRepApplier(PoolNameOrSocket, IsGlobal) ->
-   case IsGlobal of
-      true ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-stop?global=true">>, [], undefined);
-      _ ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-stop">>, [], undefined)
-   end.
+stopRepApplier(PoolNameOrSocket, QueryPars) ->
+   QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPut, <<"/_api/replication/applier-stop", QueryBinary/binary>>, [], undefined).
 
 % 输出复制的当前状态
 % GET /_api/replication/applier-state
@@ -459,14 +561,9 @@ stopRepApplier(PoolNameOrSocket, IsGlobal) ->
 getRepApplierState(PoolNameOrSocket) ->
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-state">>, [], undefined).
 
-getRepApplierState(PoolNameOrSocket, IsGlobal) ->
-   case IsGlobal of
-      true ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-state?global=true">>, [], undefined);
-      _ ->
-         agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-state">>, [], undefined)
-   end.
-
+getRepApplierState(PoolNameOrSocket, QueryPars) ->
+   QueryBinary = agMiscUtils:spellQueryPars(QueryPars),
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_api/replication/applier-state", QueryBinary/binary>>, [], undefined).
 
 % 将角色更改为奴隶
 % PUT /_api/replication/make-slave

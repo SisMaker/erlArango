@@ -7,29 +7,30 @@
 
 % doc_address:https://www.arangodb.com/docs/stable/http/administration-and-monitoring.html
 
+% 从服务器Permalink读取全局日志
 % 返回服务器日志
 % GET /_admin/log
 % 查询参数
-% 高达（可选）：返回所有日志条目多达日志级别高达。请注意，upto必须为：
-% 致命或0
-% 错误或1
-% 警告或2
-% 信息或3
-% debug 或4 默认值为info。
-% 级别（可选）：返回日志级别的所有日志条目级别。请注意，查询参数 upto和level是互斥的。
-% start（可选）：返回所有日志条目，以使其日志条目标识符（lid值）大于或等于start。
-% size（可选）：将结果限制为最大大小的日志条目。
-% offset（可选）：开始返回日志条目，跳过第一个偏移日志条目。偏移量 和大小可用于分页。
-% 搜索（可选）：仅返回包含search中指定的文本的日志条目。
-% sort（可选）：根据日志条目的盖值对日志条目进行升序（如果sort为asc）或降序（如果sort为desc）。请注意，盖子会 按时间顺序排列。默认值为asc。
+%    upto （可选）：返回所有日志条目多达日志级别高达。请注意，upto必须为：
+%       fatal 或0
+%       error或1
+%       warning或2
+%       info或3
+%       debug 或4 默认值为info。
+%    level （可选）：返回日志级别的所有日志条目级别。请注意，查询参数 upto和level是互斥的。
+%    start（可选）：返回所有日志条目，以使其日志条目标识符（lid值）大于或等于start。
+%    size（可选）：将结果限制为最大大小的日志条目。
+%    offset（可选）：开始返回日志条目，跳过第一个偏移日志条目。偏移量 和大小可用于分页。
+%    search （可选）：仅返回包含search中指定的文本的日志条目。
+%    sort（可选）：根据日志条目的盖值对日志条目进行升序（如果sort为asc）或降序（如果sort为desc）。请注意，盖子会 按时间顺序排列。默认值为asc。
 % 从服务器的全局日志中返回致命，错误，警告或信息日志消息。结果是具有以下属性的JSON对象：
 % HTTP 200
-% lid：日志条目标识符的列表。每个日志消息都由其@LIT {lid}唯一标识，并且标识符按升序排列。
-% level：所有日志条目的日志级别列表。
-% timestamp：所有日志条目的时间戳列表，自1970-01-01开始以秒为单位。
-% text：所有日志条目的文本列表
-% topic：所有日志条目的主题列表
-% totalAmount：分页前的日志条目总数。
+%    lid：日志条目标识符的列表。每个日志消息都由其@LIT {lid}唯一标识，并且标识符按升序排列。
+%    level：所有日志条目的日志级别列表。
+%    timestamp：所有日志条目的时间戳列表，自1970-01-01开始以秒为单位。
+%    text：所有日志条目的文本列表
+%    topic：所有日志条目的主题列表
+%    totalAmount：分页前的日志条目总数。
 % 400：如果为up或level指定了无效值，则返回。
 % 500：如果服务器由于内存不足错误而无法生成结果，则返回。
 getAdminLog(PoolNameOrSocket) ->
@@ -214,6 +215,36 @@ getAdminProps(PoolNameOrSocket) ->
 % 错误：错误，在这种情况下为false
 getAdminStatisticsDesc(PoolNameOrSocket) ->
    agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/statistics-description">>, [], undefined).
+
+% TLS 永久链接
+% 返回TLS数据的摘要
+% 返回此服务器的TLS数据（服务器密钥，客户端身份验证CA）
+% GET /_admin/server/tls
+% 返回TLS数据的摘要。JSON响应将包含result具有以下组件的字段 ：
+% keyfile：有关密钥文件的信息。
+% clientCA：有关用于客户端证书验证的CA的信息。
+% 如果使用服务器名称指示（SNI），并且为不同的服务器名称配置了多个密钥文件，那么将存在一个附加属性SNI，该属性为每个配置的服务器名称包含有关该服务器名称的密钥文件的相应信息。
+%
+% 在所有情况下，该属性的值都将是一个JSON对象，该对象具有以下属性的子集（无论适当）：
+% SHA256：该值是一个带有整个输入文件的SHA256的字符串。
+% certificates：值是一个JSON数组，文件链中包含公共证书。
+% privateKeySHA256：如果存在私钥（keyfile 但没有私钥clientCA），则此字段存在并且包含带有私钥SHA256的JSON字符串。
+% 这是一个公共API，因此它不要求身份验证。
+% 返回码
+% 200：如果一切正常，此API将返回HTTP 200
+getAdminTLS(PoolNameOrSocket) ->
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgGet, <<"/_admin/server/tls">>, [], undefined).
+
+% 触发TLS数据的重新加载并返回摘要永久链接
+% 触发此服务器的TLS数据（服务器密钥，客户端身份验证CA）的重新加载，并以摘要形式返回新数据。
+% POST /_admin/server/tls
+% 此API调用触发所有TLS数据的重新加载，然后返回摘要。JSON响应与相应的GET请求完全相同（请参见此处）。
+% 这是受保护的API，只能以超级用户权限执行。
+% 返回码
+% 200：如果一切正常，此API将返回HTTP 200
+% 403：如果未使用超级用户权限调用此API，它将返回HTTP 403 FORBIDDEN。
+triggerAdminTLS(PoolNameOrSocket) ->
+   agHttpCli:callAgency(PoolNameOrSocket, ?AgPost, <<"/_admin/server/tls">>, [], undefined).
 
 % 返回当前实例指标
 % GET /_admin/metrics
