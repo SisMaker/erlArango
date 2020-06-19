@@ -73,8 +73,8 @@
 -record(cliState, {
    isHeadMethod = false :: boolean(),           %% 是否是<<"HEAD">>请求方法
    %method = undefined :: undefined | method(),
-   requestsIn = 1 :: non_neg_integer(),
-   requestsOut = 0 :: non_neg_integer(),
+   requestsIns = [] :: list(),
+   requestsOuts = [] :: list(),
    backlogNum = 0 :: integer(),
    backlogSize = 0 :: integer(),
    status = leisure :: waiting | leisure,

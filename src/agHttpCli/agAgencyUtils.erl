@@ -36,10 +36,10 @@ clearQueue() ->
    erlang:erase().
 
 -spec dealClose(srvState(), cliState(), term()) -> {ok, srvState(), cliState()}.
-dealClose(SrvState, #cliState{curInfo = CurInfo} = ClientState, Reply) ->
+dealClose(SrvState, #cliState{requestsIns = RequestsIns, requestsOuts = RequestsOuts, curInfo = CurInfo} = ClientState, Reply) ->
    agencyReply(CurInfo, Reply),
-   agencyReplyAll(Reply),
-   reconnectTimer(SrvState, ClientState#cliState{requestsIn = 1, requestsOut = 0, backlogNum = 0, status = leisure, curInfo = undefined, recvState = undefined}).
+   agencyReplyAll(RequestsOuts, RequestsIns, Reply),
+   reconnectTimer(SrvState, ClientState#cliState{requestsIns = [], requestsOuts = [], backlogNum = 0, status = leisure, curInfo = undefined, recvState = undefined}).
 
 -spec reconnectTimer(srvState(), cliState()) -> {ok, srvState(), cliState()}.
 reconnectTimer(#srvState{reconnectState = undefined} = SrvState, CliState) ->
@@ -68,10 +68,10 @@ agencyReply(FormPid, RequestId, TimerRef, Reply) ->
    catch FormPid ! #miRequestRet{requestId = RequestId, reply = Reply},
    ok.
 
--spec agencyReplyAll(term()) -> ok.
-agencyReplyAll(Reply) ->
-   AllList = agAgencyUtils:clearQueue(),
-   [agencyReply(FormPid, RequestId, undefined, Reply) || #miRequest{requestId = RequestId, fromPid = FormPid} <- AllList],
+-spec agencyReplyAll(list(), list(), term()) -> ok.
+agencyReplyAll(RequestsOuts, RequestsIns, Reply) ->
+   [agencyReply(FormPid, RequestId, undefined, Reply) || #miRequest{requestId = RequestId, fromPid = FormPid} <- RequestsOuts],
+   [agencyReply(FormPid, RequestId, undefined, Reply) || #miRequest{requestId = RequestId, fromPid = FormPid} <- lists:reverse(RequestsIns)],
    ok.
 
 -spec cancelTimer(undefined | reference()) -> ok.
