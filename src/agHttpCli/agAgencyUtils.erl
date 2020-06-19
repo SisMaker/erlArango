@@ -5,11 +5,7 @@
 -compile({inline_size, 128}).
 
 -export([
-   getQueue/1
-   , addQueue/2
-   , delQueue/1
-   , clearQueue/0
-   , cancelTimer/1
+   cancelTimer/1
    , dealClose/3
    , reconnectTimer/2
    , agencyReply/2
@@ -18,22 +14,6 @@
    , resetReconnectState/1
    , updateReconnectState/1
 ]).
-
--spec getQueue(pos_integer()) -> undefined | miRequest().
-getQueue(RequestsIndex) ->
-   erlang:get(RequestsIndex).
-
--spec addQueue(pos_integer(), miRequest()) -> undefined.
-addQueue(RequestsIndex, MiRequest) ->
-   erlang:put(RequestsIndex, MiRequest).
-
--spec delQueue(pos_integer()) -> miRequest().
-delQueue(RequestsIndex) ->
-   erlang:erase(RequestsIndex).
-
--spec clearQueue() -> term().
-clearQueue() ->
-   erlang:erase().
 
 -spec dealClose(srvState(), cliState(), term()) -> {ok, srvState(), cliState()}.
 dealClose(SrvState, #cliState{requestsIns = RequestsIns, requestsOuts = RequestsOuts, curInfo = CurInfo} = ClientState, Reply) ->
