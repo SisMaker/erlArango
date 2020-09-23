@@ -45,25 +45,6 @@ test(N, StartTime) ->
 %%    agHttpCli:callAgency(tt, Request, 5000),
 %%    test(N - 1, Request).
 
-
-tcjf(0, _Args1) ->
-   Args = #{name => ffd, tet => "fdsff", <<"dfdf">> => 131245435346},
-   jiffy:encode(Args);
-tcjf(N, Args1) ->
-   Args = #{name => ffd, tet => "fdsff", <<"dfdf">> => 131245435346},
-   jiffy:encode(Args),
-   tcjf(N - 1, Args1).
-
-tcjx(0, _Args1) ->
-   Args = {[{name, ffd}, {tet, "fdsff"}, {<<"dfdf">>, 131245435346}]},
-   jiffy:encode(Args);
-tcjx(N, Args1) ->
-   Args = {[{name, ffd}, {tet, "fdsff"}, {<<"dfdf">>, 131245435346}]},
-   jiffy:encode(Args),
-   tcjx(N - 1, Args1).
-
-
-
 -define(HeadBin, <<"X-Content-Type-Options: nosniff\r\nEtag: \"_aKwJ_tm--E\"\r\nServer: ArangoDB\r\nConnection: Keep-Alive\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 178">>).
 th1(0, Fun, Rn) ->
    ?MODULE:Fun(?HeadBin, Rn);
@@ -127,6 +108,23 @@ contentLength([<<"transfer-encoding: chunked">> | _T]) ->
 contentLength([_ | T]) ->
    contentLength(T).
 
+%% 测试 jiffy 与 jsx 编码解码性能
+tcjf(0, _Args1) ->
+   Args = #{name => ffd, tet => "fdsff", <<"dfdf">> => 131245435346},
+   jiffy:encode(Args);
+tcjf(N, Args1) ->
+   Args = #{name => ffd, tet => "fdsff", <<"dfdf">> => 131245435346},
+   jiffy:encode(Args),
+   tcjf(N - 1, Args1).
+
+tcjx(0, _Args1) ->
+   Args = {[{name, ffd}, {tet, "fdsff"}, {<<"dfdf">>, 131245435346}]},
+   jiffy:encode(Args);
+tcjx(N, Args1) ->
+   Args = {[{name, ffd}, {tet, "fdsff"}, {<<"dfdf">>, 131245435346}]},
+   jiffy:encode(Args),
+   tcjx(N - 1, Args1).
+
 
 -define(BodyBin1, <<"{\"_key\":\"01J\",\"_id\":\"airports/01J\",\"_rev\":\"_aKwJ_tm--E\",\"name\":\"Hilliard Airpark\",\"city\":\"Hilliard\",\"state\":\"FL\",\"country\":\"USA\",\"lat\":30.6880125,\"long\":-81.90594389,\"vip\":false}">>).
 -define(BodyBin2, <<"{\"_key\":\"01J\",\"_id\":\"airports/01J\",\"_rev\":\"_aPaBl7O--_\",\"name\":\"Hilliard Airpark\",\"city\":\"Hilliardfdfsdfdsffffffffffffffffffffffffffffffffffffffffffffffffffffffffafdsfasdfdafsdafdsfsdafdsafdsfdsfdsafdsfdsfdsfhghfghfghgfhsdsdfdsfdsfdsffdfddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddggggggggggggggggggggggggggggggggggggggggg\",\"state\":\"FL\",\"country\":\"USAjjkjkjkfgjkgjfkdjgldgjldjglfdjglfjdljljrlejtrltjewltjrelwtjrletjrletrletjlrejtjtrlwjrejwlrjjreljtljelwjrtlwjtreljrlewjrlwjrlwejrlejltkdfsafd\",\"lat\":30.6880125,\"long\":-81.90594389,\"vip\":false}">>).
@@ -143,14 +141,15 @@ jd2(N, Fun) ->
    ?MODULE:Fun(?BodyBin2),
    jd2(N - 1, Fun).
 
-decode1(Bin) ->
+decodeJy1(Bin) ->
    jiffy:decode(Bin, [return_maps]).
 
-decode2(Bin) ->
+decodeJy2(Bin) ->
    jiffy:decode(Bin, [return_maps, copy_strings]).
 
-decode3(Bin) ->
-   jiffy:decode(Bin, [return_maps]).
 
-decode4(Bin) ->
-   jiffy:decode(Bin, [return_maps, copy_strings]).
+decodeJx1(Bin) ->
+   jsx:decode(Bin, [return_maps]).
+
+decodeJx2(Bin) ->
+   jsx:decode(Bin, []).
