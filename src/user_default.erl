@@ -20,7 +20,7 @@ tt(C, N) ->
 
 test(0, StartTime) ->
    agMiscFuns:curDbTime(tt),
-   io:format("IMY******test over use time ~p~n", [erlang:system_time(millisecond) - StartTime]);
+   io:format("IMY******test over use time ~pms~n", [erlang:system_time(millisecond) - StartTime]);
 test(N, StartTime) ->
    agMiscFuns:curDbTime(tt),
    test(N - 1, StartTime).
