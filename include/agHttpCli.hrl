@@ -121,7 +121,7 @@
 -type backlogSize() :: pos_integer() | infinity.
 -type requestId() :: {serverName(), reference()}.
 -type socket() :: inet:socket() | ssl:sslsocket().
--type socketOpts() :: [gen_tcp:connect_option(), ...].
+-type socketOpts() :: [gen_tcp:connect_option() | ssl:tls_client_option()].
 -type error() :: {error, term()}.
 
 -type dbCfg() ::
