@@ -52,8 +52,8 @@ handleMsg(_Msg, State) ->
    {ok, State}.
 
 terminate(_Reason, _State) ->
-   ets:delete_all_objects(?ETS_AG_Pool),
-   ets:delete_all_objects(?ETS_AG_Agency),
+   ets:delete(?ETS_AG_Pool),
+   ets:delete(?ETS_AG_Agency),
    agKvsToBeam:load(?agBeamPool, []),
    agKvsToBeam:load(?agBeamAgency, []),
    ok.

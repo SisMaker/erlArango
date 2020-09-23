@@ -5,7 +5,7 @@
 -define(agBeamPool, agBeamPool).
 -define(agBeamAgency, agBeamAgency).
 
-%% 默认值定义
+%% 默认选项定义
 -define(DEFAULT_BASE_URL, <<"http://127.0.0.1:8529">>).
 -define(DEFAULT_DBNAME, <<"_system">>).
 -define(DEFAULT_USER, <<"root">>).
@@ -42,15 +42,6 @@
    reply :: term()
 }).
 
--record(recvState, {
-   stage = header :: header | body | done,                    %% 一个请求收到tcp可能会有多个包 最多分三个阶接收
-   contentLength :: undefined | non_neg_integer() | chunked,
-   statusCode :: undefined | 100..505,
-   headers :: undefined | [binary()],
-   buffer = <<>> :: binary(),
-   body = <<>> :: binary()
-}).
-
 -record(reconnectState, {
    min :: non_neg_integer(),
    max :: non_neg_integer() | infinity,
@@ -68,6 +59,15 @@
    reconnectState :: undefined | reconnectState(),
    socket :: undefined | ssl:sslsocket(),
    timerRef :: undefined | reference()
+}).
+
+-record(recvState, {
+   stage = header :: header | body | done,                    %% 一个请求收到http(底层是tcp)回复可能会有多个包 最多分三个阶接收
+   contentLength :: undefined | non_neg_integer() | chunked,
+   statusCode :: undefined | 100..505,
+   headers :: undefined | [binary()],
+   buffer = <<>> :: binary(),
+   body = <<>> :: binary()
 }).
 
 -record(cliState, {
