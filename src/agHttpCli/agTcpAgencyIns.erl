@@ -182,7 +182,7 @@ overAllWork(SrvState, #cliState{requestsIns = RequestsIns, requestsOuts = Reques
 overDealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers, body = Body, requestId = RequestId, fromPid = FromPid, overTime = OverTime, isSystem = IsSystem},
    #srvState{serverName = ServerName, host = Host, userPassWord = UserPassWord, dbName = DbName, socket = Socket} = SrvState,
    #cliState{requestsIns = RequestsIns, requestsOuts = RequestsOuts, backlogNum = BacklogNum} = CliState) ->
-   case erlang:system_time(millisecond) > OverTime of
+   case erlang:monotonic_time(millisecond) > OverTime of
       true ->
          %% 超时了
          agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),
@@ -358,7 +358,7 @@ dealConnect(ServerName, HostName, Port, SocketOptions) ->
 dealQueueRequest(#miRequest{method = Method, path = Path, headers = Headers, body = Body, requestId = RequestId, fromPid = FromPid, overTime = OverTime, isSystem = IsSystem},
    #srvState{serverName = ServerName, host = Host, userPassWord = UserPassWord, dbName = DbName, socket = Socket} = SrvState,
    #cliState{requestsIns = RequestsIns, requestsOuts = RequestsOuts, backlogNum = BacklogNum} = CliState) ->
-   case erlang:system_time(millisecond) > OverTime of
+   case erlang:monotonic_time(millisecond) > OverTime of
       true ->
          %% 超时了
          agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, timeout}),

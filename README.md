@@ -30,7 +30,7 @@
     Make a connection first
         {ok, Socket} = agHttpCli:connect([]).           %% Use default Settings
         %% Then you can then call various apis using Socket as the first argument
-        agMgrDb:curDbInfo(S).
+        agMgrDb:curDbInfo(Socket).
     
     Connection pooling mode
        application:ensure_all_started(erlArango).        %% start app

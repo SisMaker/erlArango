@@ -66,7 +66,7 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
       case Timeout of
          infinity -> infinity;
          _ ->
-            erlang:system_time(millisecond) + Timeout
+            erlang:monotonic_time(millisecond) + Timeout
       end,
    case erlang:is_atom(PoolNameOrSocket) of
       true ->
