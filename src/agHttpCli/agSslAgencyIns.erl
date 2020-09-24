@@ -62,7 +62,7 @@ handleMsg({ssl, Socket, Data},
    #cliState{isHeadMethod = IsHeadMethod, backlogNum = BacklogNum, curInfo = CurInfo, requestsIns = RequestsIns, requestsOuts = RequestsOuts, recvState = RecvState} = CliState) ->
    try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
       {done, #recvState{statusCode = StatusCode, headers = Headers, body = Body}} ->
-         agAgencyUtils:agencyReply(CurInfo, {ok, Body, StatusCode, Headers}),
+         agAgencyUtils:agencyReply(CurInfo, {StatusCode, Body, Headers}),
          case RequestsOuts of
             [] ->
                case RequestsIns of
@@ -230,7 +230,7 @@ overReceiveSslData(#srvState{poolName = PoolName, serverName = ServerName, rn = 
       {ssl, Socket, Data} ->
          try agHttpProtocol:response(RecvState, Rn, RnRn, Data, IsHeadMethod) of
             {done, #recvState{statusCode = StatusCode, headers = Headers, body = Body}} ->
-               agAgencyUtils:agencyReply(CurInfo, {ok, Body, StatusCode, Headers}),
+               agAgencyUtils:agencyReply(CurInfo, {StatusCode, Body, Headers}),
                case RequestsOuts of
                   [] ->
                      case RequestsIns of

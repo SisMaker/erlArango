@@ -110,16 +110,19 @@ castAgency(PoolNameOrSocket, Method, Path, Headers, Body, Pid, IsSystem, Timeout
          end
    end.
 
--spec receiveRequestRet(requestId(), reference()) -> term() | {error, term()}.
+-spec receiveRequestRet(requestId(), reference()) -> {StatusCode :: non_neg_integer(), Body :: binary(), Headers :: binary()} | {error, term()}.
 receiveRequestRet(RequestId, MonitorRef) ->
    receive
       #miRequestRet{requestId = RequestId, reply = Reply} ->
          erlang:demonitor(MonitorRef),
          case Reply of
-            {ok, <<>>, _StatusCode, _Headers} ->
-               erlang:setelement(2, Reply, #{});
-            {ok, Body, _StatusCode, _Headers} ->
-               erlang:setelement(2, Reply, jiffy:decode(Body, [return_maps, copy_strings]));
+            {_StatusCode, Body, _Headers} ->
+               case Body of
+                  <<>> ->
+                     erlang:setelement(2, Reply, #{});
+                  _ ->
+                     erlang:setelement(2, Reply, jiffy:decode(Body, [return_maps, copy_strings]))
+               end;
             _ ->
                Reply
          end;
