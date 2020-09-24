@@ -6,7 +6,7 @@
 -compile({inline_size, 128}).
 
 -export([
-   %% 内部行为API
+   %% Inner Behavior API
    init/1
    , handleMsg/3
    , terminate/3
@@ -27,14 +27,14 @@ handleMsg(#miRequest{method = Method, path = Path, headers = Headers, body = Bod
          agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, noSocket}),
          {ok, SrvState, CliState};
       _ ->
-         case BacklogNum > BacklogSize of
+         case BacklogNum >= BacklogSize of
             true ->
                ?WARN(ServerName, ":backlog full curNum:~p Total: ~p ~n", [BacklogNum, BacklogSize]),
                agAgencyUtils:agencyReply(FromPid, RequestId, undefined, {error, backlogFull}),
                {ok, SrvState, CliState};
             _ ->
                case Status of
-                  leisure -> %% 空闲模式
+                  leisure -> %% 空闲状态
                      Request = agHttpProtocol:request(IsSystem, Body, Method, Host, DbName, Path, [UserPassWord | Headers]),
                      case ssl:send(Socket, Request) of
                         ok ->

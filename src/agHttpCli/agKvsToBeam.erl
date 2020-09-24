@@ -7,7 +7,7 @@
    load/2
 ]).
 
-%% 注意 map类型的数据不能当做key
+%% attention: the map type data can not as the key
 -type key() :: atom() | binary() | bitstring() | float() | integer() | list() | tuple().
 -type value() :: atom() | binary() | bitstring() | float() | integer() | list() | tuple() | map().
 

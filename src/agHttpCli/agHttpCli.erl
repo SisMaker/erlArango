@@ -6,7 +6,7 @@
 -compile({inline_size, 128}).
 
 -export([
-   %% 请求通用API
+   %% Common Request API
    callAgency/5
    , callAgency/6
    , callAgency/7
@@ -16,12 +16,12 @@
    , castAgency/8
    , receiveRequestRet/2
 
-   %% 连接池API
+   %% Pools API
    , startPool/2
    , startPool/3
    , stopPool/1
 
-   %% 单进程操作DbAPI
+   %% Single Process DbAPI
    , connectDb/1
    , disConnectDb/1
    , getCurDbInfo/1

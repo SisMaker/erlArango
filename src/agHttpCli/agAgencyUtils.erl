@@ -59,16 +59,15 @@ cancelTimer(undefined) -> ok;
 cancelTimer(TimerRef) ->
    case erlang:cancel_timer(TimerRef) of
       false ->
-         %% 找不到计时器，我们还没有看到超时消息
          receive
             {timeout, TimerRef, _Msg} ->
-               %% 丢弃该超时消息
+               %% discard the timeout msg
                ok
          after 0 ->
             ok
          end;
       _ ->
-         %% Timer 已经运行了
+         %% Timer already run
          ok
    end.
 

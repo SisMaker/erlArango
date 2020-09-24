@@ -81,11 +81,9 @@ response(undefined, Rn, RnRn, Data, IsHeadMethod) ->
                      end
                end;
             not_enough_data ->
-               %% headers都不足 这也可以能发生么
                {ok, #recvState{stage = header, body = Data}}
          end;
       not_enough_data ->
-         %% headers都不足 这也可以能发生么
          {ok, #recvState{stage = header, body = Data}};
       {error, Reason} ->
          {error, Reason}
@@ -148,7 +146,6 @@ response(#recvState{stage = header, body = OldBody}, Rn, RnRn, Data, IsHeadMetho
                      end
                end;
             not_enough_data ->
-               %% headers都不足 这也可以能发生么
                {ok, #recvState{stage = header, body = CurBody}}
          end;
       not_enough_data ->

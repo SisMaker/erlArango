@@ -16,15 +16,15 @@
    , terminate/2
 ]).
 
-%% k-v缓存表
+%% k-v beam cache
 -define(ETS_AG_Pool, ets_ag_Pool).
 -define(ETS_AG_Agency, ets_ag_Agency).
 
-%% TODO 下面spawn_opt 参数需要调优
+%% TODO maybe spawn_opt params need optimize
 -define(agencySpec(ServerMod, ServerName, Args),
    #{
       id => ServerName
-      , start => {ServerMod, start_link, [ServerName, Args, [{min_heap_size, 10240}, {min_bin_vheap_size, 524288}, {fullsweep_after, 1024}]]}
+      , start => {ServerMod, start_link, [ServerName, Args, [{min_heap_size, 10240}, {min_bin_vheap_size, 524288}, {fullsweep_after, 2048}]]}
       , restart => transient
       , shutdown => infinity
       , type => worker
@@ -119,11 +119,6 @@ agencyMod(ssl) ->
    agSslAgencyExm;
 agencyMod(_) ->
    agTcpAgencyExm.
-
-%% agencySpec(ServerMod, ServerName, Args) ->
-%%    %% TODO 下面spawn_opt 参数需要调优
-%%    StartFunc = {ServerMod, start_link, [ServerName, Args, [{min_heap_size, 10240}, {min_bin_vheap_size, 524288}, {fullsweep_after, 1024}]]},
-%%    {ServerName, StartFunc, transient, infinity, worker, [ServerMod]}.
 
 -spec startChildren(atom(), protocol(), poolSize(), agencyOpts()) -> ok.
 startChildren(PoolName, Protocol, PoolSize, AgencyOpts) ->
