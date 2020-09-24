@@ -29,13 +29,13 @@
     Non-connection pooling mode
     Make a connection first
         {ok, Socket} = agHttpCli:connect([]).           %% Use default Settings
-        Then you can then call various apis using Socket as the first argument
+        %% Then you can then call various apis using Socket as the first argument
         agMgrDb:curDbInfo(S).
     
     Connection pooling mode
        application:ensure_all_started(erlArango).        %% start app
        agHttpCli:startPool(poolName, [], []).            %% start pool
-       Then you can then invoke various apis using poolName as the first argument
+       %% Then you can then invoke various apis using poolName as the first argument
        agMgrDb:curDbInfo(poolName).  
 
        
